@@ -58,6 +58,11 @@ MESSAGES = {
 		"es": "La contraseña no es correcta. Revisa que la escribes bien (mayúsculas e idioma del teclado) y prueba otra vez.",
 		"ca": "La contrasenya no és correcta. Revisa que l'escrius bé (majúscules i idioma del teclat) i torna-ho a provar.",
 	},
+	"local_account": {
+		"en": "That username is a local account on this computer, not a student account. Check you typed your own username correctly.",
+		"es": "Ese usuario es una cuenta local de este ordenador, no una cuenta de alumno. Revisa que has escrito bien tu usuario.",
+		"ca": "Eixe usuari és un compte local d'este ordinador, no un compte d'alumne. Revisa que has escrit bé el teu usuari.",
+	},
 	"generic": {
 		"en": "We couldn't log in with that account. Try again; if it keeps failing, ask a teacher or IT.",
 		"es": "No se ha podido entrar con esa cuenta. Prueba otra vez; si sigue sin funcionar, avisa a un profesor o a informática.",

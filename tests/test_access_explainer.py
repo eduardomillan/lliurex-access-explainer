@@ -127,6 +127,35 @@ def test_explain_login_failure_never_raises_on_internal_error():
     assert resp["return"] == f'{ae_module.MESSAGES["generic"]["es"]} [generic]'
 
 
+def test_local_account_detected():
+    """Real-world case: "bocairent" and similar local/admin accounts
+    always get pam_sss code 10 (unknown user) regardless of password,
+    because pam_sss only manages domain accounts. Detecting that the
+    username resolves via /etc/passwd specifically ("-s files") lets
+    the message say so explicitly instead of the misleading generic
+    "unknown user" wording."""
+    explainer = make_explainer()
+    with patch.object(explainer, "_run", return_value=fake_proc(stdout="bocairent:x:1002:1002::/home/bocairent:/bin/bash\n")):
+        assert explainer._check_local_account("bocairent", "es") == ("local_account", ae_module.MESSAGES["local_account"]["es"])
+
+
+def test_local_account_not_found_returns_none():
+    explainer = make_explainer()
+    with patch.object(explainer, "_run", return_value=fake_proc(stdout="", returncode=2)):
+        assert explainer._check_local_account("danmilfer", "es") is None
+
+
+def test_local_account_checked_before_subprocess_based_checks():
+    """Priority: a local account should be reported as such even if
+    sssd/backend/pam checks would otherwise have something to say."""
+    explainer = make_explainer()
+    explainer.core.get_plugin.return_value = None  # no local deny-list match
+    with patch.object(explainer, "_check_local_account", return_value=("local_account", ae_module.MESSAGES["local_account"]["es"])), \
+         patch.object(explainer, "_check_subprocess_based", return_value=("generic", ae_module.MESSAGES["generic"]["es"])):
+        resp = explainer.explain_login_failure("bocairent", "es")
+    assert resp["return"] == f'{ae_module.MESSAGES["local_account"]["es"]} [local_account]'
+
+
 def test_sssd_inactive_detected():
     explainer = make_explainer()
     with patch.object(explainer, "_run", return_value=fake_proc(stdout="inactive\n")):

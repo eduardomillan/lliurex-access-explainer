@@ -143,6 +143,22 @@ class AccessExplainer:
 
 	#def _user_groups
 
+	def _check_local_account(self, username, lang):
+		'''Requested after noticing that test/admin accounts like
+		"bocairent" always get pam_sss code 10 ("unknown user")
+		regardless of password, because pam_sss only manages domain
+		accounts - local-only accounts are pam_unix's job instead.
+		Checking "-s files" specifically (not the default nsswitch
+		order) confirms the username resolves via /etc/passwd, i.e. it
+		really is a local account, not a coincidentally-similar domain
+		one.'''
+		proc = self._run(["getent", "-s", "files", "passwd", username])
+		if proc is not None and proc.returncode == 0 and proc.stdout.strip():
+			return self._tag("local_account", lang)
+		return None
+
+	#def _check_local_account
+
 	def _check_local_deny_lists(self, username, lang):
 		'''Fase 1/2: ask AccessControlManager (read-only) whether this user,
 		one of their groups, or the CDC allow-list denies login on THIS
@@ -292,6 +308,7 @@ class AccessExplainer:
 
 			category, text = (
 				self._check_local_deny_lists(username, lang)
+				or self._check_local_account(username, lang)
 				or self._check_subprocess_based(username, minutes, lang)
 				or self._tag("generic", lang)
 			)

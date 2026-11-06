@@ -18,7 +18,13 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "89b40e340992cade6eb822cef819b5e87305af89ab9dcce457cad413427b765e"
+    sha256_patched: "ad629f7d34c66f2207b11025086d67ad5bbab22a1f2474416aef613f59afbd22"
+    # Pilot-active label now also shows the project version (read from
+    # the repo's own VERSION file at patch-generation time, interpolated
+    # via a plain string .replace() - NOT .format(), which chokes on the
+    # QML source's own { } braces throughout the string). Current
+    # version: see ../../VERSION.
+    #
     # Panel color is now a soft LliureX blue (#c6ebfe, derived by pixel
     # from the real brand color in the LliureX boot logo, #42bbfb - see
     # AGENTS.md); the previous mint green (#dcf2dc) is tagged in git as

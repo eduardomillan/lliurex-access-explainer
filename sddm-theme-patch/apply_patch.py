@@ -15,6 +15,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 SRC = HERE / "Main.qml.pristine"
 DST = HERE / "Main.qml.patched"
+PROJECT_VERSION = (HERE.parent / "VERSION").read_text().strip()
 
 ANCHOR_1 = '''    function showWarning(msg)
     {
@@ -234,8 +235,10 @@ INSERT_7 = '''            Rectangle {
                 // just echo back whatever string we pass regardless of
                 // locale - pick the text ourselves instead, the same
                 // way explainerLang() already does for the dynamic
-                // AccessExplainer messages.
-                text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
+                // AccessExplainer messages. Version comes from the
+                // repo's own VERSION file at patch-generation time, not
+                // hardcoded here - see PROJECT_VERSION above.
+                text: explainerLang() === "ca" ? "Assistent d'accés v__VERSION__" : "Asistente de acceso v__VERSION__"
                 Layout.alignment: Qt.AlignHCenter
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.96
                 opacity: 0.7
@@ -243,7 +246,7 @@ INSERT_7 = '''            Rectangle {
 
             Item {
                 Layout.fillHeight:true
-            }'''
+            }'''.replace("__VERSION__", PROJECT_VERSION)
 
 
 # Anchor 8: enlarge the whole login box ~10% (400x340 -> 440x374), per an

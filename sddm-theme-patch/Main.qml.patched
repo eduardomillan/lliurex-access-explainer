@@ -905,8 +905,10 @@ Item {
                 // just echo back whatever string we pass regardless of
                 // locale - pick the text ourselves instead, the same
                 // way explainerLang() already does for the dynamic
-                // AccessExplainer messages.
-                text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
+                // AccessExplainer messages. Version comes from the
+                // repo's own VERSION file at patch-generation time, not
+                // hardcoded here - see PROJECT_VERSION above.
+                text: explainerLang() === "ca" ? "Assistent d'accés v1.0.0" : "Asistente de acceso v1.0.0"
                 Layout.alignment: Qt.AlignHCenter
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.96
                 opacity: 0.7
