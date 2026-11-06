@@ -28,8 +28,11 @@ ANCHOR_1 = '''    function showWarning(msg)
 '''
 INSERT_1 = '''    function explainerLang()
     {
-        // AccessExplainer: pick the message language from the greeter locale
-        var n = Qt.locale().name();
+        // AccessExplainer: pick the message language from the greeter locale.
+        // Qt.locale().name is a PROPERTY (e.g. "es_ES"/"ca_ES"), not a method -
+        // calling it as name() throws "Property 'name' ... is not a function"
+        // and aborts onLoginFailed() before the N4D call ever runs.
+        var n = Qt.locale().name;
         return n.indexOf("ca") === 0 ? "ca" : "es";
     }
 

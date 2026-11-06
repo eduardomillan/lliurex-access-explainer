@@ -1,20 +1,23 @@
 --- Main.qml.pristine	2026-11-06 13:14:08.901192972 +0100
-+++ Main.qml.patched	2026-11-06 13:15:01.445076164 +0100
-@@ -103,6 +103,13 @@
++++ Main.qml.patched	2026-11-06 14:37:39.496416772 +0100
+@@ -103,6 +103,16 @@
          root.topWindow.enabled = true;
      }
  
 +    function explainerLang()
 +    {
-+        // AccessExplainer: pick the message language from the greeter locale
-+        var n = Qt.locale().name();
++        // AccessExplainer: pick the message language from the greeter locale.
++        // Qt.locale().name is a PROPERTY (e.g. "es_ES"/"ca_ES"), not a method -
++        // calling it as name() throws "Property 'name' ... is not a function"
++        // and aborts onLoginFailed() before the N4D call ever runs.
++        var n = Qt.locale().name;
 +        return n.indexOf("ca") === 0 ? "ca" : "es";
 +    }
 +
      function showWarning(msg)
      {
          message.type = Kirigami.MessageType.Warning;
-@@ -597,6 +604,26 @@
+@@ -597,6 +607,26 @@
  
      N4D.Proxy
      {
@@ -41,7 +44,7 @@
          id: local_get_active_connections
          client: n4dLocal
          plugin: "WifiEduGva"
-@@ -650,8 +677,12 @@
+@@ -650,8 +680,12 @@
          }
          
          function onLoginFailed() {
