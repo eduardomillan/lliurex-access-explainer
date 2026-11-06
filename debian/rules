@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# There's no declarative debhelper way to say "patch a file owned by
+# another package" (Main.qml belongs to lliurex-sddm-theme), so this
+# project's own scripts/install.sh and scripts/uninstall.sh already do
+# that imperatively (version/sha256 check, backup, copy). Rather than
+# re-implement that logic as debhelper maintainer-script snippets, ship
+# the whole repo under /usr/share/lliurex-access-explainer/ and have
+# postinst/prerm call those same scripts directly - one source of
+# truth, same behavior whether installed by hand or via this package.
+override_dh_install:
+	mkdir -p debian/lliurex-access-explainer/usr/share/lliurex-access-explainer
+	rsync -a \
+		--exclude='.git/' \
+		--exclude='debian/' \
+		--exclude='__pycache__/' \
+		--exclude='.pytest_cache/' \
+		--exclude='AGENTS.md' \
+		./ debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/
+	dh_install

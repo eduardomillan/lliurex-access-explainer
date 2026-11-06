@@ -56,6 +56,17 @@ Item {
 
     readonly property int autoLoginTimeout: 30000 //30 seconds
 
+    // AccessExplainer: how long (ms) the login-failure message stays
+    // visible before auto-hiding; overwritten once get_display_seconds()
+    // responds (see local_get_display_seconds above). This default is
+    // only used until then, or if that call fails.
+    property int explainerDisplayMs: 20000
+
+    // AccessExplainer: Ethernet/Wi-Fi IPs, filled once
+    // local_get_network_info responds; empty until then or if it fails
+    // (the status bar label just hides itself in that case).
+    property string explainerNetworkInfo: ""
+
     property Item topWindow: loginFrame
     property bool firstBoot: true
     property int loginMode : Main.LoginMode.Local
@@ -101,6 +112,7 @@ Item {
         message.visible=true;
         root.topWindow = loginFrame;
         root.topWindow.enabled = true;
+        messageAutoHideTimer.restart();
     }
 
     function explainerLang()
@@ -120,6 +132,7 @@ Item {
         message.visible = true;
         //root.topWindow = loginFrame;
         root.topWindow.enabled = true;
+        messageAutoHideTimer.restart();
     }
 
     function isLocal(username)
@@ -627,6 +640,51 @@ Item {
 
     N4D.Proxy
     {
+        // AccessExplainer: fetch the configured auto-hide delay once at
+        // startup; explainerDisplayMs keeps its safe default if this
+        // fails or never returns (see get_display_seconds() in
+        // AccessExplainer.py and DISPLAY_SECONDS_CONFIG_FILE there for
+        // how to change the default without re-patching this file).
+        id: local_get_display_seconds
+        client: n4dLocal
+        plugin: "AccessExplainer"
+        method: "get_display_seconds"
+
+        onError: {
+            console.log("AccessExplainer: failed to fetch display_seconds, keeping default");
+        }
+
+        onResponse: {
+            root.explainerDisplayMs = value * 1000;
+        }
+    }
+
+    N4D.Proxy
+    {
+        // AccessExplainer: Ethernet/Wi-Fi IPs for the status bar, so a
+        // machine can be identified at a glance when helping remotely.
+        // value is a list of {iface, type, ip} - see get_network_info()
+        // in AccessExplainer.py for how virtual interfaces are excluded.
+        id: local_get_network_info
+        client: n4dLocal
+        plugin: "AccessExplainer"
+        method: "get_network_info"
+
+        onError: {
+            console.log("AccessExplainer: failed to fetch network info");
+        }
+
+        onResponse: {
+            var parts = [];
+            for (var n = 0; n < value.length; n++) {
+                parts.push(value[n].iface + ": " + value[n].ip);
+            }
+            root.explainerNetworkInfo = parts.join("  ·  ");
+        }
+    }
+
+    N4D.Proxy
+    {
         id: local_get_active_connections
         client: n4dLocal
         plugin: "WifiEduGva"
@@ -665,6 +723,8 @@ Item {
         local_get_autologin.call([]);
         local_get_whitelist.call([]);
         local_lliurex_version.call([]);
+        local_get_display_seconds.call([]);
+        local_get_network_info.call([]);
 
         tags.reload();
     }
@@ -710,6 +770,16 @@ Item {
         visible: active && Qt.inputMethod.visible
     }
     
+    // AccessExplainer: auto-hide the login-failure message after
+    // explainerDisplayMs, and immediately whenever the user edits
+    // either field (see txtUser/txtPass onTextChanged below).
+    Timer {
+        id: messageAutoHideTimer
+        interval: root.explainerDisplayMs
+        repeat: false
+        onTriggered: { message.visible = false; }
+    }
+
     /* Clock refresh timer */
     Timer {
         id: timerClock
@@ -908,7 +978,7 @@ Item {
                 // AccessExplainer messages. Version comes from the
                 // repo's own VERSION file at patch-generation time, not
                 // hardcoded here - see PROJECT_VERSION above.
-                text: explainerLang() === "ca" ? "Assistent d'accés v1.0.0" : "Asistente de acceso v1.0.0"
+                text: explainerLang() === "ca" ? "Assistent d'accés v1.0.4" : "Asistente de acceso v1.0.4"
                 Layout.alignment: Qt.AlignHCenter
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.96
                 opacity: 0.7
@@ -944,6 +1014,12 @@ Item {
                     onEditingFinished: {
                         txtPass.focus=true
                     }
+                    onTextChanged: {
+                        // AccessExplainer: clear any shown message as
+                        // soon as the user starts correcting their input.
+                        message.visible = false;
+                        messageAutoHideTimer.stop();
+                    }
                     
                 }
                 
@@ -967,7 +1043,13 @@ Item {
                     echoMode: TextInput.Password
                     font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
                     placeholderText: i18nd("lliurex-sddm-theme","Password")
-                    
+                    onTextChanged: {
+                        // AccessExplainer: clear any shown message as
+                        // soon as the user starts correcting their input.
+                        message.visible = false;
+                        messageAutoHideTimer.stop();
+                    }
+
                     Keys.onReturnPressed: {
                         loginFrame.enabled = false;
                         login();
@@ -1525,11 +1607,24 @@ Item {
             PlasmaComponents.Label {
                 id: widgetHost
                 Layout.alignment: Qt.AlignRight
-                
+
                 horizontalAlignment: Text.AlignHCenter
-                
+
                 text: sddm.hostName
-                
+
+            }
+
+            PlasmaComponents.Label {
+                // AccessExplainer: physical Ethernet/Wi-Fi IPs only
+                // (see get_network_info() in AccessExplainer.py) - makes
+                // it easy to identify this machine when helping remotely.
+                id: widgetNetworkInfo
+                Layout.alignment: Qt.AlignRight
+
+                horizontalAlignment: Text.AlignHCenter
+
+                text: root.explainerNetworkInfo
+                visible: text.length > 0
             }
 
             PlasmaComponents.Label {

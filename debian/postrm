@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    purge)
+        # The Main.qml backup is only useful while this package might
+        # be reinstalled; on purge (not plain remove) there's no reason
+        # to keep it around.
+        rm -rf /var/backups/lliurex-access-explainer
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

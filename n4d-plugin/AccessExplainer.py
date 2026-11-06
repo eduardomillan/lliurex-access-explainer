@@ -23,6 +23,7 @@ import importlib.util
 import os
 import re
 import subprocess
+from pathlib import Path
 
 import n4d.responses
 import n4d.server.core as n4dcore
@@ -69,6 +70,19 @@ PAM_SSS_CODE_CATEGORY = {
 }
 PAM_SSS_RECEIVED_RE = re.compile(r"received for user [^:]+:\s*(\d+)")
 
+# How long the login-failure message stays on screen before Main.qml
+# auto-hides it, in seconds. Configurable without re-deploying the
+# Main.qml patch: edit DISPLAY_SECONDS_CONFIG_FILE on the machine (a
+# plain text file containing just the number) instead. The greeter asks
+# for this once per session via get_display_seconds().
+DISPLAY_SECONDS_DEFAULT = 20
+DISPLAY_SECONDS_CONFIG_FILE = Path("/etc/lliurex-access-explainer/display_seconds.conf")
+
+# Where _physical_interfaces looks for network interfaces. A module-level
+# constant (not inlined in the method) so tests can point it at a fake
+# directory tree instead of the real /sys.
+SYS_CLASS_NET = Path("/sys/class/net")
+
 
 
 class AccessExplainer:
@@ -82,6 +96,83 @@ class AccessExplainer:
 		return n4d.responses.build_successful_call_response(True)
 
 	#def ping
+
+	def get_display_seconds(self):
+		'''Anonymous, read-only. How long Main.qml should keep a
+		login-failure message on screen before auto-hiding it. Reads
+		DISPLAY_SECONDS_CONFIG_FILE if present (a plain text file with
+		just the number), otherwise DISPLAY_SECONDS_DEFAULT. Never
+		raises or returns something the QML side can't use as a
+		positive number.'''
+		try:
+			if DISPLAY_SECONDS_CONFIG_FILE.exists():
+				value = int(DISPLAY_SECONDS_CONFIG_FILE.read_text().strip())
+				if value > 0:
+					return n4d.responses.build_successful_call_response(value)
+		except Exception as e:
+			print(f"AccessExplainer.get_display_seconds. Error: {e}")
+		return n4d.responses.build_successful_call_response(DISPLAY_SECONDS_DEFAULT)
+
+	#def get_display_seconds
+
+	def _physical_interfaces(self):
+		'''Maps interface name -> "wifi"/"ethernet" for real network
+		hardware only. A /sys/class/net/<iface>/device symlink only
+		exists for interfaces backed by actual hardware - this is what
+		excludes Docker (docker0, br-*, veth*), VirtualBox (vboxnet*),
+		libvirt (virbr*), and other virtual interfaces, regardless of
+		their name, instead of pattern-matching names (which would miss
+		anything not matching a known virtual-interface naming
+		convention). A "wireless" subdirectory distinguishes Wi-Fi from
+		Ethernet among what's left.'''
+		result = {}
+		base = SYS_CLASS_NET
+		if not base.exists():
+			return result
+		try:
+			for entry in base.iterdir():
+				name = entry.name
+				if name == "lo":
+					continue
+				if not (entry / "device").exists():
+					continue
+				result[name] = "wifi" if (entry / "wireless").exists() else "ethernet"
+		except Exception as e:
+			print(f"AccessExplainer._physical_interfaces. Error: {e}")
+		return result
+
+	#def _physical_interfaces
+
+	def get_network_info(self):
+		'''Anonymous, read-only. Returns a list of
+		{"iface", "type", "ip"} dicts for this machine's physical
+		Ethernet/Wi-Fi interfaces with an IPv4 address - excludes
+		loopback and virtual interfaces (Docker, VirtualBox, bridges,
+		...). Never raises; returns an empty list on any failure.'''
+		try:
+			interfaces = self._physical_interfaces()
+			if not interfaces:
+				return n4d.responses.build_successful_call_response([])
+
+			proc = self._run(["ip", "-o", "-4", "addr", "show"])
+			entries = []
+			if proc is not None and proc.returncode == 0 and proc.stdout:
+				for line in proc.stdout.splitlines():
+					match = re.match(r"^\d+:\s+(\S+)\s+inet\s+([\d.]+)/", line)
+					if not match:
+						continue
+					name, ip = match.group(1), match.group(2)
+					if name in interfaces:
+						entries.append({"iface": name, "type": interfaces[name], "ip": ip})
+
+			return n4d.responses.build_successful_call_response(entries)
+		except Exception as e:
+			print(f"AccessExplainer.get_network_info. Error: {e}")
+			return n4d.responses.build_successful_call_response([])
+
+	#def get_network_info
+
+	#def get_display_seconds
 
 	def _msg(self, category, lang):
 		lang = str(lang).lower()

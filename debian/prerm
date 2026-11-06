@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+PKG_DIR="/usr/share/lliurex-access-explainer"
+
+case "$1" in
+    remove|deconfigure)
+        # Runs before dpkg removes this package's own files, so
+        # $PKG_DIR/scripts/uninstall.sh (shipped by the package) still
+        # exists at this point. It restores Main.qml from the backup
+        # it already made, if present, and removes the N4D plugin
+        # files from their real runtime location.
+        if [ -x "$PKG_DIR/scripts/uninstall.sh" ]; then
+            "$PKG_DIR/scripts/uninstall.sh" || echo "lliurex-access-explainer: uninstall.sh reported a problem - see the output above." >&2
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

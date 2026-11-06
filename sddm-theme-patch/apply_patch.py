@@ -83,6 +83,51 @@ INSERT_2 = '''    N4D.Proxy
         }
     }
 
+    N4D.Proxy
+    {
+        // AccessExplainer: fetch the configured auto-hide delay once at
+        // startup; explainerDisplayMs keeps its safe default if this
+        // fails or never returns (see get_display_seconds() in
+        // AccessExplainer.py and DISPLAY_SECONDS_CONFIG_FILE there for
+        // how to change the default without re-patching this file).
+        id: local_get_display_seconds
+        client: n4dLocal
+        plugin: "AccessExplainer"
+        method: "get_display_seconds"
+
+        onError: {
+            console.log("AccessExplainer: failed to fetch display_seconds, keeping default");
+        }
+
+        onResponse: {
+            root.explainerDisplayMs = value * 1000;
+        }
+    }
+
+    N4D.Proxy
+    {
+        // AccessExplainer: Ethernet/Wi-Fi IPs for the status bar, so a
+        // machine can be identified at a glance when helping remotely.
+        // value is a list of {iface, type, ip} - see get_network_info()
+        // in AccessExplainer.py for how virtual interfaces are excluded.
+        id: local_get_network_info
+        client: n4dLocal
+        plugin: "AccessExplainer"
+        method: "get_network_info"
+
+        onError: {
+            console.log("AccessExplainer: failed to fetch network info");
+        }
+
+        onResponse: {
+            var parts = [];
+            for (var n = 0; n < value.length; n++) {
+                parts.push(value[n].iface + ": " + value[n].ip);
+            }
+            root.explainerNetworkInfo = parts.join("  ·  ");
+        }
+    }
+
 '''
 
 # Anchor 3 is matched with a regex (not a literal string) because the
@@ -303,6 +348,176 @@ INSERT_11 = '''            PlasmaComponents.Button {
                 implicitWidth: 200'''
 
 
+# Anchors 12/13: make showError/showWarning restart the auto-hide timer
+# every time they're called, so ANY message shown through them
+# (AccessExplainer's or the theme's own WiFi-related ones) auto-hides
+# after explainerDisplayMs, not just the ones this project added.
+ANCHOR_12 = '''    function showError(msg)
+    {
+        message.type=Kirigami.MessageType.Error;
+        message.text=msg;
+        message.visible=true;
+        root.topWindow = loginFrame;
+        root.topWindow.enabled = true;
+    }'''
+INSERT_12 = '''    function showError(msg)
+    {
+        message.type=Kirigami.MessageType.Error;
+        message.text=msg;
+        message.visible=true;
+        root.topWindow = loginFrame;
+        root.topWindow.enabled = true;
+        messageAutoHideTimer.restart();
+    }'''
+
+ANCHOR_13 = '''    function showWarning(msg)
+    {
+        message.type = Kirigami.MessageType.Warning;
+        message.text = msg;
+        message.visible = true;
+        //root.topWindow = loginFrame;
+        root.topWindow.enabled = true;
+    }'''
+INSERT_13 = '''    function showWarning(msg)
+    {
+        message.type = Kirigami.MessageType.Warning;
+        message.text = msg;
+        message.visible = true;
+        //root.topWindow = loginFrame;
+        root.topWindow.enabled = true;
+        messageAutoHideTimer.restart();
+    }'''
+
+# Anchor 14: the explainerDisplayMs property and the auto-hide Timer
+# itself. Placed right before the existing clock timer, using only its
+# first lines as the anchor (its own onTriggered body has several
+# blank/whitespace-only lines that aren't worth regex-matching here
+# since we only need to insert something *before* this block).
+ANCHOR_14 = '''    readonly property int autoLoginTimeout: 30000 //30 seconds'''
+INSERT_14 = '''    readonly property int autoLoginTimeout: 30000 //30 seconds
+
+    // AccessExplainer: how long (ms) the login-failure message stays
+    // visible before auto-hiding; overwritten once get_display_seconds()
+    // responds (see local_get_display_seconds above). This default is
+    // only used until then, or if that call fails.
+    property int explainerDisplayMs: 20000
+
+    // AccessExplainer: Ethernet/Wi-Fi IPs, filled once
+    // local_get_network_info responds; empty until then or if it fails
+    // (the status bar label just hides itself in that case).
+    property string explainerNetworkInfo: ""'''
+
+ANCHOR_15 = '''    /* Clock refresh timer */
+    Timer {
+        id: timerClock'''
+INSERT_15 = '''    // AccessExplainer: auto-hide the login-failure message after
+    // explainerDisplayMs, and immediately whenever the user edits
+    // either field (see txtUser/txtPass onTextChanged below).
+    Timer {
+        id: messageAutoHideTimer
+        interval: root.explainerDisplayMs
+        repeat: false
+        onTriggered: { message.visible = false; }
+    }
+
+    /* Clock refresh timer */
+    Timer {
+        id: timerClock'''
+
+# Anchor 16: trigger the get_display_seconds fetch alongside the other
+# startup calls.
+ANCHOR_16_RE = re.compile(
+    r'        local_get_settings\.call\(\[\]\);\n'
+    r'        local_get_autologin\.call\(\[\]\);\n'
+    r'        local_get_whitelist\.call\(\[\]\);\n'
+    r'        local_lliurex_version\.call\(\[\]\);\n'
+    r'[ \t]*\n'
+    r'        tags\.reload\(\);'
+)
+INSERT_16 = '''        local_get_settings.call([]);
+        local_get_autologin.call([]);
+        local_get_whitelist.call([]);
+        local_lliurex_version.call([]);
+        local_get_display_seconds.call([]);
+        local_get_network_info.call([]);
+
+        tags.reload();'''
+
+# Anchor 17: clear the message as soon as the user edits txtUser - this
+# block (onEditingFinished) is untouched by the earlier font-size patch
+# (ANCHOR_9), so it's a safe, independent anchor regardless of patch
+# order.
+ANCHOR_17 = '''                    onEditingFinished: {
+                        txtPass.focus=true
+                    }'''
+INSERT_17 = '''                    onEditingFinished: {
+                        txtPass.focus=true
+                    }
+                    onTextChanged: {
+                        // AccessExplainer: clear any shown message as
+                        // soon as the user starts correcting their input.
+                        message.visible = false;
+                        messageAutoHideTimer.stop();
+                    }'''
+
+# Anchor 18: same for txtPass. Anchored on text that already includes
+# the font.pixelSize line from ANCHOR_10/INSERT_10, since this
+# transformation runs after that one on the same working copy.
+ANCHOR_18_RE = re.compile(
+    r'                    font\.pixelSize: Kirigami\.Theme\.defaultFont\.pixelSize \* 1\.2\n'
+    r'                    placeholderText: i18nd\("lliurex-sddm-theme","Password"\)\n'
+    r'[ \t]*\n'
+    r'                    Keys\.onReturnPressed: \{'
+)
+INSERT_18 = '''                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
+                    placeholderText: i18nd("lliurex-sddm-theme","Password")
+                    onTextChanged: {
+                        // AccessExplainer: clear any shown message as
+                        // soon as the user starts correcting their input.
+                        message.visible = false;
+                        messageAutoHideTimer.stop();
+                    }
+
+                    Keys.onReturnPressed: {'''
+
+# Anchor 19: a status-bar label showing physical Ethernet/Wi-Fi IPs,
+# next to the existing hostname label. Regex-matched because of the
+# original's blank-with-whitespace lines inside the block.
+ANCHOR_19_RE = re.compile(
+    r'            PlasmaComponents\.Label \{\n'
+    r'                id: widgetHost\n'
+    r'                Layout\.alignment: Qt\.AlignRight\n'
+    r'[ \t]*\n'
+    r'                horizontalAlignment: Text\.AlignHCenter\n'
+    r'[ \t]*\n'
+    r'                text: sddm\.hostName\n'
+    r'[ \t]*\n'
+    r'            \}'
+)
+INSERT_19 = '''            PlasmaComponents.Label {
+                id: widgetHost
+                Layout.alignment: Qt.AlignRight
+
+                horizontalAlignment: Text.AlignHCenter
+
+                text: sddm.hostName
+
+            }
+
+            PlasmaComponents.Label {
+                // AccessExplainer: physical Ethernet/Wi-Fi IPs only
+                // (see get_network_info() in AccessExplainer.py) - makes
+                // it easy to identify this machine when helping remotely.
+                id: widgetNetworkInfo
+                Layout.alignment: Qt.AlignRight
+
+                horizontalAlignment: Text.AlignHCenter
+
+                text: root.explainerNetworkInfo
+                visible: text.length > 0
+            }'''
+
+
 def apply_literal_once(text, anchor, insert_before, label):
     count = text.count(anchor)
     if count != 1:
@@ -344,6 +559,14 @@ def main():
     text = apply_replacement_once(text, ANCHOR_9, INSERT_9, "txtUser font +10%")
     text = apply_replacement_once(text, ANCHOR_10, INSERT_10, "txtPass font +10%")
     text = apply_replacement_once(text, ANCHOR_11, INSERT_11, "btnLogin font +10%")
+    text = apply_replacement_once(text, ANCHOR_12, INSERT_12, "showError (restart auto-hide timer)")
+    text = apply_replacement_once(text, ANCHOR_13, INSERT_13, "showWarning (restart auto-hide timer)")
+    text = apply_replacement_once(text, ANCHOR_14, INSERT_14, "explainerDisplayMs property")
+    text = apply_replacement_once(text, ANCHOR_15, INSERT_15, "messageAutoHideTimer")
+    text = apply_regex_once(text, ANCHOR_16_RE, INSERT_16, "fetch get_display_seconds on startup")
+    text = apply_replacement_once(text, ANCHOR_17, INSERT_17, "txtUser onTextChanged clears message")
+    text = apply_regex_once(text, ANCHOR_18_RE, INSERT_18, "txtPass onTextChanged clears message")
+    text = apply_regex_once(text, ANCHOR_19_RE, INSERT_19, "widgetNetworkInfo status bar label")
 
     if text == original:
         sys.exit("ERROR: no changes were applied, refusing to write an unpatched file")

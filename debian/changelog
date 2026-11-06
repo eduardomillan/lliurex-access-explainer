@@ -1,0 +1,29 @@
+lliurex-access-explainer (1.0.4-1) unstable; urgency=low
+
+  * Version bump only, no functional change.
+
+ -- Eduardo Millan <eduardo.millan@gmail.com>  Fri, 06 Nov 2026 20:00:00 +0100
+
+lliurex-access-explainer (1.0.3-1) unstable; urgency=low
+
+  * Status bar now shows physical Ethernet/Wi-Fi IPs
+    (AccessExplainer.get_network_info()).
+  * Rewrote docs/ISSUES.md as a GitHub-label-style issue tracker.
+  * Added .deb packaging scaffold (not yet built/tested).
+
+ -- Eduardo Millan <eduardo.millan@gmail.com>  Fri, 06 Nov 2026 19:00:00 +0100
+
+lliurex-access-explainer (1.0.2-1) unstable; urgency=low
+
+  * Login-failure message now auto-hides after a configurable delay
+    and clears immediately when the user edits the username/password
+    field.
+
+ -- Eduardo Millan <eduardo.millan@gmail.com>  Fri, 06 Nov 2026 17:00:00 +0100
+
+lliurex-access-explainer (1.0.0-1) unstable; urgency=low
+
+  * Initial release: AccessExplainer N4D plugin, Main.qml patch,
+    full test suite and documentation.
+
+ -- Eduardo Millan <eduardo.millan@gmail.com>  Fri, 06 Nov 2026 16:54:00 +0100

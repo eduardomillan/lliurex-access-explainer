@@ -18,7 +18,23 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "ad629f7d34c66f2207b11025086d67ad5bbab22a1f2474416aef613f59afbd22"
+    sha256_patched: "bab4064430f7597df5b5f26fc19eff857f801683762b2cacddd547a89fd4c435"
+    # v1.0.4: only the label's version string changed (v1.0.3 -> v1.0.4),
+    # no functional change in this version bump - see CHANGELOG.md.
+    #
+    # v1.0.3: adds a status-bar label showing physical Ethernet/Wi-Fi
+    # IPs (AccessExplainer.get_network_info(), excludes loopback and
+    # virtual interfaces by checking for a real /sys/class/net/*/device
+    # symlink rather than matching interface names). See CHANGELOG.md.
+    # v1.0.2 (not committed yet, testing on .128/.245): the login-failure
+    # message now auto-hides after explainerDisplayMs (fetched from
+    # AccessExplainer.get_display_seconds(), default 20s, configurable
+    # via /etc/lliurex-access-explainer/display_seconds.conf without
+    # re-patching), and clears immediately if the user edits txtUser or
+    # txtPass. showError()/showWarning() both restart the timer, so this
+    # applies to every message shown through them, not just
+    # AccessExplainer's own.
+    #
     # Pilot-active label now also shows the project version (read from
     # the repo's own VERSION file at patch-generation time, interpolated
     # via a plain string .replace() - NOT .format(), which chokes on the

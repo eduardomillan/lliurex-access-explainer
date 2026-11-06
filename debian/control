@@ -1,0 +1,27 @@
+Source: lliurex-access-explainer
+Section: admin
+Priority: optional
+Maintainer: Eduardo Millan <eduardo.millan@gmail.com>
+Build-Depends: debhelper-compat (= 13), rsync
+Standards-Version: 4.6.2
+
+Package: lliurex-access-explainer
+Architecture: all
+Depends: ${misc:Depends}, n4d, python3
+Recommends: lliurex-sddm-theme
+Description: Plain-language login-failure explanations for LliureX
+ Shows a short, plain-language reason on the LliureX login screen when
+ a student's login fails, instead of the generic "Login failed"
+ message. Includes an N4D plugin (AccessExplainer) that checks SSSD
+ status, local access-control lists and pam_sss logs, and a patch for
+ lliurex-sddm-theme's Main.qml that asks it for that reason and shows
+ it, auto-hiding after a configurable delay.
+ .
+ The theme patch is applied/reverted by this package's maintainer
+ scripts (which just call the project's own scripts/install.sh and
+ scripts/uninstall.sh), checking the installed lliurex-sddm-theme
+ version and a known sha256 before touching anything, and keeping a
+ backup of the original file. Re-running the patch (e.g. on a package
+ reinstall) is a no-op if the file is already patched. Restarting sddm
+ to apply a newly patched theme is never done automatically by this
+ package.

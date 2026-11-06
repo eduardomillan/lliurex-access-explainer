@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+PKG_DIR="/usr/share/lliurex-access-explainer"
+
+case "$1" in
+    configure)
+        if [ -x "$PKG_DIR/scripts/install.sh" ]; then
+            # Never let a problem here (e.g. an unsupported
+            # lliurex-sddm-theme version, so the theme patch step
+            # refuses on purpose) abort `dpkg --configure`: the N4D
+            # plugin install is the part that matters most and already
+            # succeeded by this point if we got here. install.sh itself
+            # is idempotent (checks sha256 before touching Main.qml), so
+            # re-running it on an upgrade/reinstall is safe.
+            "$PKG_DIR/scripts/install.sh" || echo "lliurex-access-explainer: install.sh reported a problem - see the output above. The N4D plugin and/or the Main.qml theme patch may not be fully applied; check manually with $PKG_DIR/scripts/install.sh." >&2
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

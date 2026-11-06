@@ -78,6 +78,100 @@ def test_ping():
     assert resp["return"] is True
 
 
+def test_get_display_seconds_default_when_no_config_file():
+    explainer = make_explainer()
+    fake_path = MagicMock()
+    fake_path.exists.return_value = False
+    with patch.object(ae_module, "DISPLAY_SECONDS_CONFIG_FILE", fake_path):
+        resp = explainer.get_display_seconds()
+    assert resp["return"] == ae_module.DISPLAY_SECONDS_DEFAULT
+
+
+def test_get_display_seconds_reads_config_file_override():
+    explainer = make_explainer()
+    fake_path = MagicMock()
+    fake_path.exists.return_value = True
+    fake_path.read_text.return_value = "45\n"
+    with patch.object(ae_module, "DISPLAY_SECONDS_CONFIG_FILE", fake_path):
+        resp = explainer.get_display_seconds()
+    assert resp["return"] == 45
+
+
+def test_get_display_seconds_falls_back_on_invalid_config_file():
+    explainer = make_explainer()
+    fake_path = MagicMock()
+    fake_path.exists.return_value = True
+    fake_path.read_text.return_value = "not-a-number"
+    with patch.object(ae_module, "DISPLAY_SECONDS_CONFIG_FILE", fake_path):
+        resp = explainer.get_display_seconds()
+    assert resp["return"] == ae_module.DISPLAY_SECONDS_DEFAULT
+
+
+def _make_fake_sys_class_net(tmp_path, with_device, with_wireless):
+    """Builds one fake /sys/class/net/<iface> entry. with_device=False
+    mimics a virtual interface (Docker/VirtualBox/bridge/...), which
+    never has a "device" symlink regardless of its name."""
+    def make(name):
+        iface_dir = tmp_path / name
+        iface_dir.mkdir()
+        if with_device:
+            (iface_dir / "device").mkdir()
+        if with_wireless:
+            (iface_dir / "wireless").mkdir()
+        return iface_dir
+    return make
+
+
+def test_physical_interfaces_excludes_loopback_and_virtual_ones(tmp_path):
+    make = _make_fake_sys_class_net(tmp_path, with_device=False, with_wireless=False)
+    make("lo")  # excluded by name even if it had a device, which it never does
+    make("docker0")  # no device symlink -> excluded regardless of name
+    make("vboxnet0")
+
+    make_wired = _make_fake_sys_class_net(tmp_path, with_device=True, with_wireless=False)
+    make_wired("eth0")
+
+    make_wifi = _make_fake_sys_class_net(tmp_path, with_device=True, with_wireless=True)
+    make_wifi("wlan0")
+
+    explainer = make_explainer()
+    with patch.object(ae_module, "SYS_CLASS_NET", tmp_path):
+        result = explainer._physical_interfaces()
+
+    assert result == {"eth0": "ethernet", "wlan0": "wifi"}
+
+
+def test_physical_interfaces_empty_when_sys_class_net_missing():
+    explainer = make_explainer()
+    with patch.object(ae_module, "SYS_CLASS_NET", Path("/nonexistent/path/for/this/test")):
+        assert explainer._physical_interfaces() == {}
+
+
+def test_get_network_info_matches_ip_addresses_to_physical_interfaces_only():
+    explainer = make_explainer()
+    ip_output = (
+        "1: lo    inet 127.0.0.1/8 scope host lo\n"
+        "2: docker0    inet 172.17.0.1/16 scope global docker0\n"
+        "3: eth0    inet 172.28.222.128/24 scope global eth0\n"
+        "4: wlan0    inet 10.185.97.141/25 scope global dynamic wlan0\n"
+    )
+    with patch.object(explainer, "_physical_interfaces", return_value={"eth0": "ethernet", "wlan0": "wifi"}), \
+         patch.object(explainer, "_run", return_value=fake_proc(stdout=ip_output)):
+        resp = explainer.get_network_info()
+
+    assert resp["return"] == [
+        {"iface": "eth0", "type": "ethernet", "ip": "172.28.222.128"},
+        {"iface": "wlan0", "type": "wifi", "ip": "10.185.97.141"},
+    ]
+
+
+def test_get_network_info_returns_empty_list_when_no_physical_interfaces():
+    explainer = make_explainer()
+    with patch.object(explainer, "_physical_interfaces", return_value={}):
+        resp = explainer.get_network_info()
+    assert resp["return"] == []
+
+
 def test_msg_defaults_to_es_for_unknown_lang():
     explainer = make_explainer()
     assert explainer._msg("generic", "fr") == ae_module.MESSAGES["generic"]["es"]
