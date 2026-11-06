@@ -108,6 +108,42 @@ INSERT_3 = '''        function onLoginFailed() {
             txtPass.focus = true;
         }'''
 
+# Anchor 4, also regex-matched for the same blank-line-whitespace reason as
+# anchor 3: the message box's wrapping Item had a fixed height:32 and the
+# InlineMessage used anchors.fill:parent, which forces its actual height to
+# that fixed 32px. Kirigami.InlineMessage's own docs say to avoid setting
+# its height and let it manage its own implicitHeight - our messages are
+# 1-2 full sentences, longer than the theme's original short strings
+# ("Login failed"), and got clipped to only their tail end as a result.
+ANCHOR_4_RE = re.compile(
+    r'            Item \{\n'
+    r'                Layout\.fillWidth:true;\n'
+    r'                height:32\n'
+    r'[ \t]*\n'
+    r'                Kirigami\.InlineMessage \{\n'
+    r'                    id: message\n'
+    r'                    anchors\.fill:parent\n'
+    r'                    showCloseButton: true\n'
+    r'[ \t]*\n'
+    r'                \}\n'
+    r'            \}'
+)
+INSERT_4 = '''            Item {
+                Layout.fillWidth: true
+                // AccessExplainer: let InlineMessage manage its own height
+                // (its docs recommend against setting height on it
+                // directly) instead of clipping it to a fixed 32px.
+                implicitHeight: message.visible ? message.implicitHeight : 0
+                height: implicitHeight
+
+                Kirigami.InlineMessage {
+                    id: message
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    showCloseButton: true
+                }
+            }'''
+
 
 def apply_literal_once(text, anchor, insert_before, label):
     count = text.count(anchor)
@@ -132,6 +168,7 @@ def main():
     text = apply_literal_once(text, ANCHOR_1, INSERT_1, "showWarning (add explainerLang)")
     text = apply_literal_once(text, ANCHOR_2, INSERT_2, "local_get_active_connections (add N4D.Proxy)")
     text = apply_regex_once(text, ANCHOR_3_RE, INSERT_3, "onLoginFailed (call AccessExplainer)")
+    text = apply_regex_once(text, ANCHOR_4_RE, INSERT_4, "message box (let InlineMessage size itself)")
 
     if text == original:
         sys.exit("ERROR: no changes were applied, refusing to write an unpatched file")

@@ -18,11 +18,17 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "056c0f0edc76878f1ca69a39289d36cab402e9207a6a117a7c7175d4b4b14a30"
-    # Superseded a previous sha256_patched
-    # (d522f4323a40a77b9b1a6c33a4ddc35c948519e500d5e33b2350d7a9932e170c):
-    # that version called Qt.locale().name() as a method instead of
-    # accessing the .name property, throwing a TypeError that silently
-    # aborted onLoginFailed() before the AccessExplainer N4D call ever
-    # ran (confirmed via journalctl on a real sddm restart - see
-    # AGENTS.md). Fixed in apply_patch.py.
+    sha256_patched: "eac31ce17f04f63b775cceb747b2069238b4db62dbb50b8ac849880dfb483de1"
+    # Superseded two previous sha256_patched values, both found live on
+    # real test machines (see AGENTS.md for the full story):
+    #   d522f4323a40a77b9b1a6c33a4ddc35c948519e500d5e33b2350d7a9932e170c
+    #     - Qt.locale().name() called as a method instead of accessing
+    #       the .name property; threw a TypeError that silently aborted
+    #       onLoginFailed() before the AccessExplainer N4D call ever ran.
+    #   056c0f0edc76878f1ca69a39289d36cab402e9207a6a117a7c7175d4b4b14a30
+    #     - fixed the above, but the message box's wrapping Item had a
+    #       fixed height:32 and the InlineMessage used
+    #       anchors.fill:parent, clipping our longer (1-2 sentence)
+    #       messages to only their tail end. InlineMessage's own docs say
+    #       to avoid setting its height and let it manage implicitHeight
+    #       instead.

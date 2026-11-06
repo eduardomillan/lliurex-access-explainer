@@ -1003,14 +1003,18 @@ Item {
             }
             
             Item {
-                Layout.fillWidth:true;
-                height:32
-                
+                Layout.fillWidth: true
+                // AccessExplainer: let InlineMessage manage its own height
+                // (its docs recommend against setting height on it
+                // directly) instead of clipping it to a fixed 32px.
+                implicitHeight: message.visible ? message.implicitHeight : 0
+                height: implicitHeight
+
                 Kirigami.InlineMessage {
                     id: message
-                    anchors.fill:parent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     showCloseButton: true
-                    
                 }
             }
                 

@@ -1,5 +1,5 @@
 --- Main.qml.pristine	2026-11-06 13:14:08.901192972 +0100
-+++ Main.qml.patched	2026-11-06 14:37:39.496416772 +0100
++++ Main.qml.patched	2026-11-06 15:41:01.545693128 +0100
 @@ -103,6 +103,16 @@
          root.topWindow.enabled = true;
      }
@@ -59,3 +59,27 @@
              loginFrame.enabled=true;
              txtPass.text = "";
              txtPass.focus = true;
+@@ -969,14 +1003,18 @@
+             }
+             
+             Item {
+-                Layout.fillWidth:true;
+-                height:32
+-                
++                Layout.fillWidth: true
++                // AccessExplainer: let InlineMessage manage its own height
++                // (its docs recommend against setting height on it
++                // directly) instead of clipping it to a fixed 32px.
++                implicitHeight: message.visible ? message.implicitHeight : 0
++                height: implicitHeight
++
+                 Kirigami.InlineMessage {
+                     id: message
+-                    anchors.fill:parent
++                    anchors.left: parent.left
++                    anchors.right: parent.right
+                     showCloseButton: true
+-                    
+                 }
+             }
+                 
