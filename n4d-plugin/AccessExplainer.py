@@ -21,6 +21,7 @@
 import concurrent.futures
 import importlib.util
 import os
+import re
 import subprocess
 
 import n4d.responses
@@ -49,6 +50,24 @@ SUBPROCESS_TIMEOUT = 2
 # itself slower than usual. A single bounded wait caps the worst case to
 # roughly one SUBPROCESS_TIMEOUT instead of their sum.
 PARALLEL_CHECKS_TIMEOUT = SUBPROCESS_TIMEOUT + 1
+
+# pam_sss logs a numeric code on its own "received for user X: <code>
+# (<description>)" line. The code is locale-independent; the
+# parenthesised description is not ("Usuari desconegut...", "User not
+# known...", etc. depending on system language) and never reliably
+# contains one fixed substring to match on - confirmed in the field: a
+# bare "authentication failure" line is present for EVERY failed
+# attempt regardless of cause, so matching on description text alone
+# always fell through to "auth_failed" even for a nonexistent username.
+# Matching the numeric code instead distinguishes them correctly.
+#   10 = user unknown to this authentication module (nonexistent
+#        account, or a local-only account pam_sss doesn't know about)
+#    7 = generic authentication error (wrong password for a real account)
+PAM_SSS_CODE_CATEGORY = {
+	10: "user_unknown",
+	7: "auth_failed",
+}
+PAM_SSS_RECEIVED_RE = re.compile(r"received for user [^:]+:\s*(\d+)")
 
 
 
@@ -202,9 +221,17 @@ class AccessExplainer:
 		user_lines = [l for l in proc.stdout.splitlines() if username in l]
 		if not user_lines:
 			return None
+
+		# Prefer the numeric code (locale-independent) over text matching -
+		# see the PAM_SSS_CODE_CATEGORY comment above for why.
+		for line in user_lines:
+			match = PAM_SSS_RECEIVED_RE.search(line)
+			if match:
+				category = PAM_SSS_CODE_CATEGORY.get(int(match.group(1)))
+				if category:
+					return self._tag(category, lang)
+
 		joined = "\n".join(user_lines).lower()
-		if "user unknown" in joined:
-			return self._tag("user_unknown", lang)
 		if "authentication failure" in joined:
 			return self._tag("auth_failed", lang)
 		if "permission denied" in joined:

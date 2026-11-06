@@ -159,18 +159,54 @@ def test_backend_offline_last_transition_is_online_returns_none():
         assert explainer._check_backend_offline(10, "es") is None
 
 
-def test_pam_log_user_unknown():
+def test_pam_log_user_unknown_by_numeric_code():
+    """Real-world wording from the field is 'User not known to the
+    underlying authentication module' (English) or 'Usuari desconegut
+    per al modul d'autenticacio subjacent' (Catalan) - neither contains
+    the literal substring "user unknown". Every failed attempt, known
+    or unknown user, also logs a separate "authentication failure" line
+    regardless of cause. Matching the numeric code (10) is what actually
+    distinguishes "unknown user" from "wrong password for a real user"
+    reliably, independent of system locale."""
     explainer = make_explainer()
-    journal = "nov 06 10:00:00 host sudo[1]: pam_sss(sudo:auth): received for user alice: 10 (User unknown)\n"
+    journal = (
+        "nov 06 15:35:19 host sddm-helper[1]: pam_sss(sddm:auth): authentication failure; "
+        "logname= uid=0 euid=0 tty= ruser= rhost= user=eduardo\n"
+        "nov 06 15:35:19 host sddm-helper[1]: pam_sss(sddm:auth): received for user eduardo: "
+        "10 (User not known to the underlying authentication module)\n"
+    )
     with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
-        assert explainer._check_pam_log("alice", 10, "es") == ("user_unknown", ae_module.MESSAGES["user_unknown"]["es"])
+        assert explainer._check_pam_log("eduardo", 10, "es") == ("user_unknown", ae_module.MESSAGES["user_unknown"]["es"])
 
 
-def test_pam_log_authentication_failure():
+def test_pam_log_authentication_failure_by_numeric_code():
+    """A real existing account with a wrong password logs code 7, not
+    10 - confirmed in the field (user "marmilfer", code 7, "Error
+    d'autenticacio")."""
     explainer = make_explainer()
-    journal = "nov 06 10:00:00 host sudo[1]: pam_sss(sudo:auth): authentication failure; user=bob\n"
+    journal = (
+        "nov 06 15:45:42 host sddm-helper[1]: pam_sss(sddm:auth): authentication failure; "
+        "logname= uid=0 euid=0 tty= ruser= rhost= user=marmilfer\n"
+        "nov 06 15:45:42 host sddm-helper[1]: pam_sss(sddm:auth): received for user marmilfer: "
+        "7 (Authentication error)\n"
+    )
     with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
-        assert explainer._check_pam_log("bob", 10, "es") == ("auth_failed", ae_module.MESSAGES["auth_failed"]["es"])
+        assert explainer._check_pam_log("marmilfer", 10, "es") == ("auth_failed", ae_module.MESSAGES["auth_failed"]["es"])
+
+
+def test_pam_log_unrecognized_code_falls_back_to_text_match():
+    """A pam_sss code this project hasn't mapped (e.g. 9, "authentication
+    service cannot retrieve information") falls back to the old
+    substring match on "authentication failure" instead of being lost."""
+    explainer = make_explainer()
+    journal = (
+        "nov 06 16:07:57 host sddm-helper[1]: pam_sss(sddm:auth): authentication failure; "
+        "logname= uid=0 euid=0 tty= ruser= rhost= user=me.millan\n"
+        "nov 06 16:07:57 host sddm-helper[1]: pam_sss(sddm:auth): received for user me.millan: "
+        "9 (Authentication service cannot retrieve user credentials)\n"
+    )
+    with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
+        assert explainer._check_pam_log("me.millan", 10, "es") == ("auth_failed", ae_module.MESSAGES["auth_failed"]["es"])
 
 
 def test_pam_log_no_lines_for_user_returns_none():
