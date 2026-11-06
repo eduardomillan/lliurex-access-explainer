@@ -172,7 +172,7 @@ INSERT_5 = '''        Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#d6e9f8"
+                color: "#dcf2dc"
                 radius: 4
             }
 
@@ -229,9 +229,15 @@ INSERT_7 = '''            Rectangle {
             }
 
             PlasmaComponents.Label {
-                text: i18nd("lliurex-sddm-theme","Asistente de acceso activo (piloto)")
+                // AccessExplainer: this static label isn't in the
+                // theme's own translation catalog, so i18nd() would
+                // just echo back whatever string we pass regardless of
+                // locale - pick the text ourselves instead, the same
+                // way explainerLang() already does for the dynamic
+                // AccessExplainer messages.
+                text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
                 Layout.alignment: Qt.AlignHCenter
-                font.pointSize: 8
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.88
                 opacity: 0.7
             }
 
@@ -240,12 +246,76 @@ INSERT_7 = '''            Rectangle {
             }'''
 
 
+# Anchor 8: enlarge the whole login box ~10% (400x340 -> 440x374), per an
+# ad hoc request while testing.
+ANCHOR_8 = '''    LLX.Window {
+        id: loginFrame
+        visible: root.topWindow == this
+        width: 400
+        height: 340
+        margin:24'''
+INSERT_8 = '''    LLX.Window {
+        id: loginFrame
+        visible: root.topWindow == this
+        width: 440
+        height: 374
+        margin:24'''
+
+# Anchors 9/10/11: scale up the font of every text element in the login
+# box ~10% relative to the theme's own current default size (not a
+# hardcoded absolute size), per the same ad hoc request. Kirigami.Theme
+# is already imported at the top of this file as "Kirigami".
+ANCHOR_9 = '''                PlasmaComponents.TextField {
+                    id: txtUser
+                    implicitWidth: 200
+                    focus: true
+                    placeholderText: i18nd("lliurex-sddm-theme","User name")'''
+INSERT_9 = '''                PlasmaComponents.TextField {
+                    id: txtUser
+                    implicitWidth: 200
+                    focus: true
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                    placeholderText: i18nd("lliurex-sddm-theme","User name")'''
+
+ANCHOR_10 = '''                PlasmaComponents.TextField {
+                    id: txtPass
+                    implicitWidth: 200
+                    echoMode: TextInput.Password
+                    placeholderText: i18nd("lliurex-sddm-theme","Password")'''
+INSERT_10 = '''                PlasmaComponents.TextField {
+                    id: txtPass
+                    implicitWidth: 200
+                    echoMode: TextInput.Password
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                    placeholderText: i18nd("lliurex-sddm-theme","Password")'''
+
+ANCHOR_11 = '''            PlasmaComponents.Button {
+                id: btnLogin
+                text: i18nd("lliurex-sddm-theme","Login");
+                implicitWidth: 200'''
+INSERT_11 = '''            PlasmaComponents.Button {
+                id: btnLogin
+                text: i18nd("lliurex-sddm-theme","Login");
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                implicitWidth: 200'''
+
+
 def apply_literal_once(text, anchor, insert_before, label):
     count = text.count(anchor)
     if count != 1:
         sys.exit(f"ERROR: anchor '{label}' found {count} times (expected exactly 1). "
                   f"Theme source likely changed - review manually before patching.")
     return text.replace(anchor, insert_before + anchor, 1)
+
+
+def apply_replacement_once(text, anchor, replacement, label):
+    '''Like apply_literal_once, but replaces the matched anchor text
+    outright instead of inserting something before it.'''
+    count = text.count(anchor)
+    if count != 1:
+        sys.exit(f"ERROR: anchor '{label}' found {count} times (expected exactly 1). "
+                  f"Theme source likely changed - review manually before patching.")
+    return text.replace(anchor, replacement, 1)
 
 
 def apply_regex_once(text, pattern, replacement, label):
@@ -267,6 +337,10 @@ def main():
     text = apply_literal_once(text, ANCHOR_5, INSERT_5, "loginColumn wrapper open (background panel)")
     text = apply_regex_once(text, ANCHOR_6_RE, INSERT_6, "loginColumn wrapper close (background panel)")
     text = apply_regex_once(text, ANCHOR_7_RE, INSERT_7, "pilot-active label")
+    text = apply_replacement_once(text, ANCHOR_8, INSERT_8, "login box size +10%")
+    text = apply_replacement_once(text, ANCHOR_9, INSERT_9, "txtUser font +10%")
+    text = apply_replacement_once(text, ANCHOR_10, INSERT_10, "txtPass font +10%")
+    text = apply_replacement_once(text, ANCHOR_11, INSERT_11, "btnLogin font +10%")
 
     if text == original:
         sys.exit("ERROR: no changes were applied, refusing to write an unpatched file")

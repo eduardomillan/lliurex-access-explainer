@@ -849,8 +849,8 @@ Item {
     LLX.Window {
         id: loginFrame
         visible: root.topWindow == this
-        width: 400
-        height: 340
+        width: 440
+        height: 374
         margin:24
         focus: true
         
@@ -878,7 +878,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#d6e9f8"
+                color: "#dcf2dc"
                 radius: 4
             }
 
@@ -900,9 +900,15 @@ Item {
             }
 
             PlasmaComponents.Label {
-                text: i18nd("lliurex-sddm-theme","Asistente de acceso activo (piloto)")
+                // AccessExplainer: this static label isn't in the
+                // theme's own translation catalog, so i18nd() would
+                // just echo back whatever string we pass regardless of
+                // locale - pick the text ourselves instead, the same
+                // way explainerLang() already does for the dynamic
+                // AccessExplainer messages.
+                text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
                 Layout.alignment: Qt.AlignHCenter
-                font.pointSize: 8
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.88
                 opacity: 0.7
             }
 
@@ -931,6 +937,7 @@ Item {
                     id: txtUser
                     implicitWidth: 200
                     focus: true
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
                     placeholderText: i18nd("lliurex-sddm-theme","User name")
                     onEditingFinished: {
                         txtPass.focus=true
@@ -956,6 +963,7 @@ Item {
                     id: txtPass
                     implicitWidth: 200
                     echoMode: TextInput.Password
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
                     placeholderText: i18nd("lliurex-sddm-theme","Password")
                     
                     Keys.onReturnPressed: {
@@ -1037,6 +1045,7 @@ Item {
             PlasmaComponents.Button {
                 id: btnLogin
                 text: i18nd("lliurex-sddm-theme","Login");
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
                 implicitWidth: 200
                 //anchors.horizontalCenter: parent.horizontalCenter
                 Layout.alignment: Qt.AlignHCenter

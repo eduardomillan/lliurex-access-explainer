@@ -19,10 +19,27 @@
 #     exists on the system. Only a short, already-translated sentence.
 
 import concurrent.futures
+import importlib.util
+import os
 import subprocess
 
 import n4d.responses
 import n4d.server.core as n4dcore
+
+# n4d loads each plugin by explicit file path (SourceFileLoader), not via
+# a regular package import, so there's no guarantee /usr/share/n4d/
+# python-plugins is on sys.path for a plain "import messages" to find its
+# sibling file - it might work by accident, or fail only in production
+# and not in tests (where the test file inserts this directory into
+# sys.path itself). Load it by path explicitly instead, so it works the
+# same way in both contexts.
+_here = os.path.dirname(os.path.abspath(__file__))
+_messages_spec = importlib.util.spec_from_file_location(
+	"access_explainer_messages", os.path.join(_here, "messages.py")
+)
+_messages_module = importlib.util.module_from_spec(_messages_spec)
+_messages_spec.loader.exec_module(_messages_module)
+MESSAGES = _messages_module.MESSAGES
 
 SUBPROCESS_TIMEOUT = 2
 # Upper bound for the three subprocess-backed checks combined, run in
@@ -33,40 +50,6 @@ SUBPROCESS_TIMEOUT = 2
 # roughly one SUBPROCESS_TIMEOUT instead of their sum.
 PARALLEL_CHECKS_TIMEOUT = SUBPROCESS_TIMEOUT + 1
 
-MESSAGES = {
-	"local_user_denied": {
-		"es": "Tu cuenta tiene el acceso bloqueado en este ordenador en concreto. Pide ayuda a un profesor o al departamento de informática del centro.",
-		"ca": "El teu compte té l'accés bloquejat en este ordinador en concret. Demana ajuda a un professor o al departament d'informàtica del centre.",
-	},
-	"local_group_denied": {
-		"es": "Uno de tus grupos tiene el acceso bloqueado en este ordenador. Pide ayuda a un profesor o al departamento de informática del centro.",
-		"ca": "Un dels teus grups té l'accés bloquejat en este ordinador. Demana ajuda a un professor o al departament d'informàtica del centre.",
-	},
-	"cdc_denied": {
-		"es": "Tu cuenta no está autorizada a entrar en este ordenador en concreto. Prueba en otro ordenador del aula o avisa a un profesor.",
-		"ca": "El teu compte no està autoritzat a entrar en este ordinador en concret. Prova en un altre ordinador de l'aula o avisa un professor.",
-	},
-	"sssd_inactive": {
-		"es": "Este ordenador no puede comprobar tu cuenta ahora mismo porque el servicio de identidad no está en marcha. Avisa al departamento de informática.",
-		"ca": "Este ordinador no pot comprovar el teu compte ara mateix perquè el servei d'identitat no està en marxa. Avisa el departament d'informàtica.",
-	},
-	"backend_offline": {
-		"es": "Este ordenador no puede comunicarse ahora mismo con el servidor central. Prueba de nuevo en unos segundos; si continúa, avisa a un profesor.",
-		"ca": "Este ordinador no pot comunicar-se ara mateix amb el servidor central. Torna-ho a provar en uns segons; si continua, avisa un professor.",
-	},
-	"user_unknown": {
-		"es": "No se reconoce tu usuario en este ordenador en este momento. Puede ser un problema temporal de conexión; prueba de nuevo en unos segundos.",
-		"ca": "No es reconeix el teu usuari en este ordinador en este moment. Pot ser un problema temporal de connexió; torna-ho a provar en uns segons.",
-	},
-	"auth_failed": {
-		"es": "La contraseña no es correcta. Revisa que la has escrito bien (cuidado con mayúsculas y el idioma del teclado) e inténtalo de nuevo.",
-		"ca": "La contrasenya no és correcta. Revisa que l'has escrita bé (compte amb majúscules i l'idioma del teclat) i torna-ho a provar.",
-	},
-	"generic": {
-		"es": "No se ha podido entrar con esa cuenta. Prueba de nuevo; si el problema continúa, avisa a un profesor o al departamento de informática del centro.",
-		"ca": "No s'ha pogut entrar amb eixe compte. Torna-ho a provar; si el problema continua, avisa un professor o el departament d'informàtica del centre.",
-	},
-}
 
 
 class AccessExplainer:
@@ -82,11 +65,26 @@ class AccessExplainer:
 	#def ping
 
 	def _msg(self, category, lang):
-		lang = "ca" if str(lang).lower().startswith("ca") else "es"
+		lang = str(lang).lower()
+		if lang.startswith("ca"):
+			lang = "ca"
+		elif lang.startswith("en"):
+			lang = "en"
+		else:
+			lang = "es"
 		bucket = MESSAGES.get(category, MESSAGES["generic"])
 		return bucket.get(lang, bucket["es"])
 
 	#def _msg
+
+	def _tag(self, category, lang):
+		'''Like _msg, but also carries the category key along with the
+		text, as a (category, text) tuple - every check function below
+		returns this instead of a plain string so the pilot/debug key
+		can be appended to the final message in explain_login_failure.'''
+		return (category, self._msg(category, lang))
+
+	#def _tag
 
 	def _run(self, cmd):
 		'''Run a short-lived read-only command, never raise.'''
@@ -146,7 +144,7 @@ class AccessExplainer:
 			if get_users_info:
 				users_info = get_users_info().get("return", {}) or {}
 				if users_info.get(clean_user, {}).get("isLocked"):
-					return self._msg("local_user_denied", lang)
+					return self._tag("local_user_denied", lang)
 		except Exception as e:
 			print(f"AccessExplainer._check_local_deny_lists (users). Error: {e}")
 
@@ -159,7 +157,7 @@ class AccessExplainer:
 					if not isinstance(group_data, dict):
 						continue
 					if group_data.get("isLocked") and group_name.lower() in user_groups:
-						return self._msg("local_group_denied", lang)
+						return self._tag("local_group_denied", lang)
 			except Exception as e:
 				print(f"AccessExplainer._check_local_deny_lists (groups). Error: {e}")
 
@@ -170,7 +168,7 @@ class AccessExplainer:
 				if cdc_info.get("accessControlEnabled") and cdc_info.get("code"):
 					allowed = {g.strip().lower() for g in cdc_info["code"].split(",") if g.strip()}
 					if allowed and not (user_groups & allowed):
-						return self._msg("cdc_denied", lang)
+						return self._tag("cdc_denied", lang)
 		except Exception as e:
 			print(f"AccessExplainer._check_local_deny_lists (cdc). Error: {e}")
 
@@ -181,7 +179,7 @@ class AccessExplainer:
 	def _check_sssd_service(self, lang):
 		proc = self._run(["systemctl", "is-active", "sssd"])
 		if proc is not None and proc.stdout.strip() != "active":
-			return self._msg("sssd_inactive", lang)
+			return self._tag("sssd_inactive", lang)
 		return None
 
 	#def _check_sssd_service
@@ -192,7 +190,7 @@ class AccessExplainer:
 			return None
 		lines = [l for l in proc.stdout.splitlines() if "Backend is offline" in l or "Backend is online" in l]
 		if lines and "offline" in lines[-1]:
-			return self._msg("backend_offline", lang)
+			return self._tag("backend_offline", lang)
 		return None
 
 	#def _check_backend_offline
@@ -206,11 +204,11 @@ class AccessExplainer:
 			return None
 		joined = "\n".join(user_lines).lower()
 		if "user unknown" in joined:
-			return self._msg("user_unknown", lang)
+			return self._tag("user_unknown", lang)
 		if "authentication failure" in joined:
-			return self._msg("auth_failed", lang)
+			return self._tag("auth_failed", lang)
 		if "permission denied" in joined:
-			return self._msg("generic", lang)
+			return self._tag("generic", lang)
 		return None
 
 	#def _check_pam_log
@@ -240,6 +238,15 @@ class AccessExplainer:
 
 	#def _check_subprocess_based
 
+	def _format(self, category, text):
+		'''Pilot/debug aid, requested while testing: show which category
+		fired right in the on-screen message, so testers don't need to
+		check logs to know which branch matched. Optional by design -
+		safe to drop this suffix later by changing just this method.'''
+		return f"{text} [{category}]"
+
+	#def _format
+
 	def explain_login_failure(self, username, lang="es", minutes=10):
 		'''Anonymous, read-only. Returns an already-translated, short
 		sentence explaining a login failure for `username`, or a generic
@@ -254,18 +261,18 @@ class AccessExplainer:
 				minutes = 10
 
 			if not username:
-				return n4d.responses.build_successful_call_response(self._msg("generic", lang))
+				return n4d.responses.build_successful_call_response(self._format(*self._tag("generic", lang)))
 
-			reason = (
+			category, text = (
 				self._check_local_deny_lists(username, lang)
 				or self._check_subprocess_based(username, minutes, lang)
-				or self._msg("generic", lang)
+				or self._tag("generic", lang)
 			)
 
-			return n4d.responses.build_successful_call_response(reason)
+			return n4d.responses.build_successful_call_response(self._format(category, text))
 
 		except Exception as e:
 			print(f"AccessExplainer.explain_login_failure. Error: {e}")
-			return n4d.responses.build_successful_call_response(self._msg("generic", lang))
+			return n4d.responses.build_successful_call_response(self._format(*self._tag("generic", lang)))
 
 	#def explain_login_failure

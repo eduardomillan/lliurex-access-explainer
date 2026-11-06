@@ -127,6 +127,7 @@ lliurex-access-explainer/
 ├── docs/                      # this file and the rest of the docs, in English
 ├── n4d-plugin/
 │   ├── AccessExplainer.py
+│   ├── messages.py            # i18n text catalog, kept separate on purpose
 │   └── AccessExplainer.json
 ├── sddm-theme-patch/
 │   ├── Main.qml.pristine      # exact copy of the theme file before patching

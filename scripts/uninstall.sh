@@ -10,6 +10,7 @@ set -euo pipefail
 BACKUP_DIR="/var/backups/lliurex-access-explainer"
 MAIN_QML="/usr/share/sddm/themes/lliurex/Main.qml"
 N4D_PLUGIN="/usr/share/n4d/python-plugins/AccessExplainer.py"
+N4D_MESSAGES="/usr/share/n4d/python-plugins/messages.py"
 N4D_CONF="/etc/n4d/conf.d/AccessExplainer.json"
 
 if [[ "$(id -u)" -ne 0 ]]; then
@@ -18,9 +19,9 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 echo "== Removing AccessExplainer N4D plugin =="
-if [[ -f "$N4D_PLUGIN" || -f "$N4D_CONF" ]]; then
-    rm -f "$N4D_PLUGIN" "$N4D_CONF"
-    echo "  Removed $N4D_PLUGIN and $N4D_CONF"
+if [[ -f "$N4D_PLUGIN" || -f "$N4D_MESSAGES" || -f "$N4D_CONF" ]]; then
+    rm -f "$N4D_PLUGIN" "$N4D_MESSAGES" "$N4D_CONF"
+    echo "  Removed $N4D_PLUGIN, $N4D_MESSAGES and $N4D_CONF"
     systemctl restart n4d.service
     echo "  Restarted n4d.service."
 else

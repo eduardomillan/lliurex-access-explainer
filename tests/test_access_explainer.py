@@ -78,12 +78,6 @@ def test_ping():
     assert resp["return"] is True
 
 
-def test_messages_cover_es_and_ca_for_every_category():
-    for category, bucket in ae_module.MESSAGES.items():
-        assert "es" in bucket and bucket["es"], category
-        assert "ca" in bucket and bucket["ca"], category
-
-
 def test_msg_defaults_to_es_for_unknown_lang():
     explainer = make_explainer()
     assert explainer._msg("generic", "fr") == ae_module.MESSAGES["generic"]["es"]
@@ -94,10 +88,35 @@ def test_msg_picks_ca_when_lang_starts_with_ca():
     assert explainer._msg("generic", "ca_ES") == ae_module.MESSAGES["generic"]["ca"]
 
 
+def test_msg_picks_en_when_lang_starts_with_en():
+    explainer = make_explainer()
+    assert explainer._msg("generic", "en_US") == ae_module.MESSAGES["generic"]["en"]
+
+
+def test_messages_cover_en_es_and_ca_for_every_category():
+    for category, bucket in ae_module.MESSAGES.items():
+        assert "en" in bucket and bucket["en"], category
+        assert "es" in bucket and bucket["es"], category
+        assert "ca" in bucket and bucket["ca"], category
+
+
+def test_messages_loaded_from_sibling_file_not_inlined():
+    """The user explicitly asked for i18n to live in its own file, not
+    inlined in AccessExplainer.py - this guards that split."""
+    import inspect
+
+    source = inspect.getsource(ae_module)
+    # category keys like "local_user_denied" legitimately appear as
+    # string literals passed to self._tag(...)/self._msg(...) - check for
+    # actual message TEXT instead, which should only live in messages.py.
+    assert "No puedes entrar con tu cuenta" not in source, "message text got inlined back into AccessExplainer.py"
+    assert ae_module.MESSAGES is ae_module._messages_module.MESSAGES
+
+
 def test_explain_login_failure_empty_username_returns_generic():
     explainer = make_explainer()
     resp = explainer.explain_login_failure("", "es")
-    assert resp["return"] == ae_module.MESSAGES["generic"]["es"]
+    assert resp["return"] == f'{ae_module.MESSAGES["generic"]["es"]} [generic]'
 
 
 def test_explain_login_failure_never_raises_on_internal_error():
@@ -105,13 +124,13 @@ def test_explain_login_failure_never_raises_on_internal_error():
     explainer.core.get_plugin.side_effect = RuntimeError("boom")
     with patch.object(ae_module.AccessExplainer, "_run", side_effect=RuntimeError("boom")):
         resp = explainer.explain_login_failure("someuser", "es")
-    assert resp["return"] == ae_module.MESSAGES["generic"]["es"]
+    assert resp["return"] == f'{ae_module.MESSAGES["generic"]["es"]} [generic]'
 
 
 def test_sssd_inactive_detected():
     explainer = make_explainer()
     with patch.object(explainer, "_run", return_value=fake_proc(stdout="inactive\n")):
-        assert explainer._check_sssd_service("es") == ae_module.MESSAGES["sssd_inactive"]["es"]
+        assert explainer._check_sssd_service("es") == ("sssd_inactive", ae_module.MESSAGES["sssd_inactive"]["es"])
 
 
 def test_sssd_active_returns_none():
@@ -127,7 +146,7 @@ def test_backend_offline_last_transition_is_offline():
         "nov 06 09:10:00 host sssd_be[1]: Backend is offline\n"
     )
     with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
-        assert explainer._check_backend_offline(10, "es") == ae_module.MESSAGES["backend_offline"]["es"]
+        assert explainer._check_backend_offline(10, "es") == ("backend_offline", ae_module.MESSAGES["backend_offline"]["es"])
 
 
 def test_backend_offline_last_transition_is_online_returns_none():
@@ -144,14 +163,14 @@ def test_pam_log_user_unknown():
     explainer = make_explainer()
     journal = "nov 06 10:00:00 host sudo[1]: pam_sss(sudo:auth): received for user alice: 10 (User unknown)\n"
     with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
-        assert explainer._check_pam_log("alice", 10, "es") == ae_module.MESSAGES["user_unknown"]["es"]
+        assert explainer._check_pam_log("alice", 10, "es") == ("user_unknown", ae_module.MESSAGES["user_unknown"]["es"])
 
 
 def test_pam_log_authentication_failure():
     explainer = make_explainer()
     journal = "nov 06 10:00:00 host sudo[1]: pam_sss(sudo:auth): authentication failure; user=bob\n"
     with patch.object(explainer, "_run", return_value=fake_proc(stdout=journal)):
-        assert explainer._check_pam_log("bob", 10, "es") == ae_module.MESSAGES["auth_failed"]["es"]
+        assert explainer._check_pam_log("bob", 10, "es") == ("auth_failed", ae_module.MESSAGES["auth_failed"]["es"])
 
 
 def test_pam_log_no_lines_for_user_returns_none():
@@ -170,7 +189,7 @@ def test_local_user_denied():
     explainer.core.get_plugin.return_value = acm
     with patch.object(explainer, "_user_groups", return_value=set()):
         reason = explainer._check_local_deny_lists("bob", "es")
-    assert reason == ae_module.MESSAGES["local_user_denied"]["es"]
+    assert reason == ("local_user_denied", ae_module.MESSAGES["local_user_denied"]["es"])
 
 
 def test_local_group_denied():
@@ -182,7 +201,7 @@ def test_local_group_denied():
     explainer.core.get_plugin.return_value = acm
     with patch.object(explainer, "_user_groups", return_value={"alu_eso_a3"}):
         reason = explainer._check_local_deny_lists("bob", "es")
-    assert reason == ae_module.MESSAGES["local_group_denied"]["es"]
+    assert reason == ("local_group_denied", ae_module.MESSAGES["local_group_denied"]["es"])
 
 
 def test_cdc_denied_when_user_has_no_allowed_group():
@@ -196,7 +215,7 @@ def test_cdc_denied_when_user_has_no_allowed_group():
     explainer.core.get_plugin.return_value = acm
     with patch.object(explainer, "_user_groups", return_value={"alu_eso_a3"}):
         reason = explainer._check_local_deny_lists("bob", "es")
-    assert reason == ae_module.MESSAGES["cdc_denied"]["es"]
+    assert reason == ("cdc_denied", ae_module.MESSAGES["cdc_denied"]["es"])
 
 
 def test_cdc_allowed_when_user_has_allowed_group_returns_none():
@@ -260,7 +279,7 @@ def test_local_user_denied_via_camel_case_legacy_api():
     explainer.core.get_plugin.return_value = LegacyAccessControlManager()
     with patch.object(explainer, "_user_groups", return_value=set()):
         reason = explainer._check_local_deny_lists("bob", "es")
-    assert reason == ae_module.MESSAGES["local_user_denied"]["es"]
+    assert reason == ("local_user_denied", ae_module.MESSAGES["local_user_denied"]["es"])
 
 
 def test_resolve_method_prefers_first_existing_name():

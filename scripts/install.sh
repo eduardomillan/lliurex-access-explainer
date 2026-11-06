@@ -48,8 +48,9 @@ fi
 
 echo "== Step 1: AccessExplainer N4D plugin =="
 install -m 0644 "$REPO_ROOT/n4d-plugin/AccessExplainer.py" "$N4D_PLUGIN_DIR/AccessExplainer.py"
+install -m 0644 "$REPO_ROOT/n4d-plugin/messages.py" "$N4D_PLUGIN_DIR/messages.py"
 install -m 0644 "$REPO_ROOT/n4d-plugin/AccessExplainer.json" "$N4D_CONF_DIR/AccessExplainer.json"
-echo "  Installed $N4D_PLUGIN_DIR/AccessExplainer.py and $N4D_CONF_DIR/AccessExplainer.json"
+echo "  Installed $N4D_PLUGIN_DIR/AccessExplainer.py, $N4D_PLUGIN_DIR/messages.py and $N4D_CONF_DIR/AccessExplainer.json"
 
 echo "  Restarting n4d.service (does not affect the active graphical session)..."
 systemctl restart n4d.service
