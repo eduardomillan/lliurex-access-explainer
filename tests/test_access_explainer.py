@@ -9,6 +9,7 @@ Run with:
     pytest tests/
 """
 import sys
+import time
 import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -210,6 +211,32 @@ def test_cdc_allowed_when_user_has_allowed_group_returns_none():
     with patch.object(explainer, "_user_groups", return_value={"grp_allowed"}):
         reason = explainer._check_local_deny_lists("bob", "es")
     assert reason is None
+
+
+def test_subprocess_checks_run_in_parallel_not_sequentially():
+    """Real-world case: right after a system update, journalctl got slow
+    enough that two sequential SUBPROCESS_TIMEOUT waits (sssd backend +
+    pam log, each hitting the timeout) added up and exceeded the N4D
+    client's own read timeout. _check_subprocess_based must run the
+    three checks concurrently, so worst case is close to one
+    SUBPROCESS_TIMEOUT, not their sum."""
+    explainer = make_explainer()
+
+    def slow_run(cmd):
+        time.sleep(ae_module.SUBPROCESS_TIMEOUT * 0.8)
+        # "active" satisfies the sssd check as healthy, and contains
+        # nothing that the backend/pam-log checks would match on either.
+        return fake_proc(stdout="active")
+
+    start = time.monotonic()
+    with patch.object(explainer, "_run", side_effect=slow_run):
+        reason = explainer._check_subprocess_based("someuser", 10, "es")
+    elapsed = time.monotonic() - start
+
+    assert reason is None
+    assert elapsed < ae_module.SUBPROCESS_TIMEOUT * 1.6, (
+        f"took {elapsed:.2f}s - checks are not running in parallel"
+    )
 
 
 def test_local_user_denied_via_camel_case_legacy_api():

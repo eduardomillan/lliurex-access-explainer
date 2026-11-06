@@ -18,12 +18,20 @@
 #     codes, or anything that confirms/denies whether a given username
 #     exists on the system. Only a short, already-translated sentence.
 
+import concurrent.futures
 import subprocess
 
 import n4d.responses
 import n4d.server.core as n4dcore
 
-SUBPROCESS_TIMEOUT = 3
+SUBPROCESS_TIMEOUT = 2
+# Upper bound for the three subprocess-backed checks combined, run in
+# parallel below. Found in the field: running them sequentially let two
+# SUBPROCESS_TIMEOUT journalctl calls add up (3s + 3s) and exceed the N4D
+# client's own read timeout, right after a system update made journalctl
+# itself slower than usual. A single bounded wait caps the worst case to
+# roughly one SUBPROCESS_TIMEOUT instead of their sum.
+PARALLEL_CHECKS_TIMEOUT = SUBPROCESS_TIMEOUT + 1
 
 MESSAGES = {
 	"local_user_denied": {
@@ -207,6 +215,31 @@ class AccessExplainer:
 
 	#def _check_pam_log
 
+	def _check_subprocess_based(self, username, minutes, lang):
+		'''Runs the sssd/backend/pam-log checks concurrently instead of
+		sequentially, bounded by PARALLEL_CHECKS_TIMEOUT, then applies
+		the same sssd > backend > pam priority order as before. See the
+		module-level comment on PARALLEL_CHECKS_TIMEOUT for why.'''
+		checks = {
+			"sssd": lambda: self._check_sssd_service(lang),
+			"backend": lambda: self._check_backend_offline(minutes, lang),
+			"pam": lambda: self._check_pam_log(username, minutes, lang),
+		}
+		results = {}
+		with concurrent.futures.ThreadPoolExecutor(max_workers=len(checks)) as pool:
+			futures = {name: pool.submit(fn) for name, fn in checks.items()}
+			done, _not_done = concurrent.futures.wait(futures.values(), timeout=PARALLEL_CHECKS_TIMEOUT)
+			for name, future in futures.items():
+				if future in done:
+					try:
+						results[name] = future.result()
+					except Exception as e:
+						print(f"AccessExplainer._check_subprocess_based ({name}). Error: {e}")
+
+		return results.get("sssd") or results.get("backend") or results.get("pam")
+
+	#def _check_subprocess_based
+
 	def explain_login_failure(self, username, lang="es", minutes=10):
 		'''Anonymous, read-only. Returns an already-translated, short
 		sentence explaining a login failure for `username`, or a generic
@@ -225,9 +258,7 @@ class AccessExplainer:
 
 			reason = (
 				self._check_local_deny_lists(username, lang)
-				or self._check_sssd_service(lang)
-				or self._check_backend_offline(minutes, lang)
-				or self._check_pam_log(username, minutes, lang)
+				or self._check_subprocess_based(username, minutes, lang)
 				or self._msg("generic", lang)
 			)
 
