@@ -24,14 +24,22 @@ not affect the active graphical session).
 
 ## 2. Call the plugin directly, without touching the login screen
 
+`n4d-client -r` reads `/etc/n4d/key` (root-only), so it always needs
+`sudo`, even for an `anonymous`-allowed method. Plugin and method go
+together as one dotted word; the call arguments go as a second word,
+written as a Python/JSON-ish list (single quotes are converted to double
+quotes internally, then parsed as JSON - booleans must be lowercase
+`true`/`false`):
+
 ```bash
-n4d-client -r call AccessExplainer explain_login_failure <test_username> es
+sudo n4d-client -r call AccessExplainer.explain_login_failure "['<test_username>', 'es']"
 ```
 
 Confirms the plugin actually responds before risking the login screen at
 all. Try it with:
 - A real username that exists and has no restrictions → expect the
-  generic fallback message.
+  generic fallback message (confirmed working on this machine with
+  `danmilfer`).
 - A username with no account at all → still expect a safe message, never
   an error/exception back from N4D.
 
@@ -43,13 +51,13 @@ sudo cp -a /etc/lliurex-access-control /etc/lliurex-access-control.bak
 
 # add a throwaway local test user to the deny list, through
 # AccessControlManager's own XML-RPC API (not by hand-editing files)
-n4d-client -r call AccessControlManager set_users_info '{"explainer-test-user": {"isLocked": true}}'
+sudo n4d-client -r call AccessControlManager.set_users_info "[{'explainer-test-user': {'isLocked': true}}]"
 
-n4d-client -r call AccessExplainer explain_login_failure explainer-test-user es
+sudo n4d-client -r call AccessExplainer.explain_login_failure "['explainer-test-user', 'es']"
 # expect: the "local_user_denied" message from docs/MESSAGES.md
 
 # clean up
-n4d-client -r call AccessControlManager set_users_info '{}'
+sudo n4d-client -r call AccessControlManager.set_users_info "[{}]"
 ```
 
 This exercises the Phase 1 priority-1 check without ever touching a real
