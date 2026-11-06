@@ -64,3 +64,4 @@ before ever restarting `sddm` for real.
 - [`docs/TESTING.md`](docs/TESTING.md) - how to test safely on this machine
 - [`docs/FUTURE-ANSIBLE-DEPLOYMENT.md`](docs/FUTURE-ANSIBLE-DEPLOYMENT.md) - postponed deployment plan sketch
 - [`docs/KIRIGAMI.md`](docs/KIRIGAMI.md) - notes on the QML framework behind the login screen, and two real bugs it caused here
+- [`docs/ISSUES.md`](docs/ISSUES.md) - known, currently unresolved problems
