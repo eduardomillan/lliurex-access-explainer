@@ -878,7 +878,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: "#dcf2dc"
+                color: "#c6ebfe"
                 radius: 4
             }
 
@@ -908,7 +908,7 @@ Item {
                 // AccessExplainer messages.
                 text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
                 Layout.alignment: Qt.AlignHCenter
-                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.88
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.96
                 opacity: 0.7
             }
 
@@ -937,7 +937,7 @@ Item {
                     id: txtUser
                     implicitWidth: 200
                     focus: true
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
                     placeholderText: i18nd("lliurex-sddm-theme","User name")
                     onEditingFinished: {
                         txtPass.focus=true
@@ -963,7 +963,7 @@ Item {
                     id: txtPass
                     implicitWidth: 200
                     echoMode: TextInput.Password
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
                     placeholderText: i18nd("lliurex-sddm-theme","Password")
                     
                     Keys.onReturnPressed: {
@@ -1045,7 +1045,7 @@ Item {
             PlasmaComponents.Button {
                 id: btnLogin
                 text: i18nd("lliurex-sddm-theme","Login");
-                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
                 implicitWidth: 200
                 //anchors.horizontalCenter: parent.horizontalCenter
                 Layout.alignment: Qt.AlignHCenter

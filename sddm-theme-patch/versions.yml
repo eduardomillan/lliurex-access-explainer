@@ -18,35 +18,20 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "d2af24f7586045556eea6dfca5f7aa33dc6d337e8e1c4b98b274de72f48df901"
-    # Further cosmetic tweaks, ad hoc while testing, on top of
-    # 90c4fe1b9a2e28e3f3a4ec228e6020e9437d4cff9aa1450d78a802ab7823d82d:
-    #   - background panel color changed from light blue (#d6e9f8) to
-    #     light mint green (#dcf2dc) - chosen from a small on-screen
-    #     preview of several candidates, see AGENTS.md.
-    #   - pilot-active label reworded to "Asistente de acceso" / "Assistent
-    #     d'accés", and actually language-switched via explainerLang()
-    #     instead of a static i18nd() string with no real translation.
-    #   - login box enlarged ~10% (400x340 -> 440x374) and every text
-    #     element's font bumped ~10% relative to Kirigami.Theme's own
-    #     default size (not a hardcoded absolute size).
+    sha256_patched: "fe36ca58dee050af311edee167c6e368c2130ea563121c3da9d0a51f8c7c28f7"
+    # Panel color is now a soft LliureX blue (#c6ebfe, derived by pixel
+    # from the real brand color in the LliureX boot logo, #42bbfb - see
+    # AGENTS.md); the previous mint green (#dcf2dc) is tagged in git as
+    # panel-color-mint-green-dcf2dc if it ever needs to come back. Text
+    # size bump is now 20% (was 10%), label kept proportionally smaller
+    # (0.96x default vs the controls' 1.2x).
     #
-    # Earlier history, also on top of the previous (working) patched
-    # version (eac31ce17f04f63b775cceb747b2069238b4db62dbb50b8ac849880dfb483de1):
-    # a light-blue background panel behind the login box content, without
-    # touching qml-module-lliurex-ui's Window.qml (which owns the window's
-    # own gray background and isn't patched by this project - see
-    # AGENTS.md), and the pilot-active label itself first added.
-    # Superseded two earlier sha256_patched values, both found live on
-    # real test machines (see AGENTS.md for the full story):
-    #   d522f4323a40a77b9b1a6c33a4ddc35c948519e500d5e33b2350d7a9932e170c
-    #     - Qt.locale().name() called as a method instead of accessing
-    #       the .name property; threw a TypeError that silently aborted
-    #       onLoginFailed() before the AccessExplainer N4D call ever ran.
-    #   056c0f0edc76878f1ca69a39289d36cab402e9207a6a117a7c7175d4b4b14a30
-    #     - fixed the above, but the message box's wrapping Item had a
-    #       fixed height:32 and the InlineMessage used
-    #       anchors.fill:parent, clipping our longer (1-2 sentence)
-    #       messages to only their tail end. InlineMessage's own docs say
-    #       to avoid setting its height and let it manage implicitHeight
-    #       instead.
+    # Earlier cosmetic history (on top of
+    # 90c4fe1b9a2e28e3f3a4ec228e6020e9437d4cff9aa1450d78a802ab7823d82d,
+    # itself on top of eac31ce17f04f63b775cceb747b2069238b4db62dbb50b8ac849880dfb483de1):
+    # background panel added, pilot-active label added then reworded and
+    # language-switched via explainerLang(), login box + fonts enlarged.
+    # Full step-by-step history, and the two earlier sha256_patched values
+    # that were found broken live on real test machines, are in AGENTS.md
+    # (Qt.locale().name() called as a method instead of a property; the
+    # message box clipped to a fixed height:32).
