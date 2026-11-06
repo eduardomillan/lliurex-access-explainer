@@ -18,13 +18,22 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "fe36ca58dee050af311edee167c6e368c2130ea563121c3da9d0a51f8c7c28f7"
+    sha256_patched: "89b40e340992cade6eb822cef819b5e87305af89ab9dcce457cad413427b765e"
     # Panel color is now a soft LliureX blue (#c6ebfe, derived by pixel
     # from the real brand color in the LliureX boot logo, #42bbfb - see
     # AGENTS.md); the previous mint green (#dcf2dc) is tagged in git as
     # panel-color-mint-green-dcf2dc if it ever needs to come back. Text
     # size bump is now 20% (was 10%), label kept proportionally smaller
     # (0.96x default vs the controls' 1.2x).
+    #
+    # Font scaling switched from font.pointSize to font.pixelSize: the
+    # 20% bump was applied but had no visible effect, because
+    # Kirigami.Theme.defaultFont.pointSize returns -1 when the theme's
+    # font is actually defined by pixel size (as it is here) - Qt's
+    # convention for "this font wasn't set in points". pixelSize is
+    # always resolved to a valid value either way, so it's the robust
+    # property to scale regardless of how the base theme defines its font.
+    # See docs/KIRIGAMI.md.
     #
     # Earlier cosmetic history (on top of
     # 90c4fe1b9a2e28e3f3a4ec228e6020e9437d4cff9aa1450d78a802ab7823d82d,

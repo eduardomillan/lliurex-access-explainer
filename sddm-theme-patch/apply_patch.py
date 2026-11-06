@@ -237,7 +237,7 @@ INSERT_7 = '''            Rectangle {
                 // AccessExplainer messages.
                 text: explainerLang() === "ca" ? "Assistent d'accés" : "Asistente de acceso"
                 Layout.alignment: Qt.AlignHCenter
-                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.96
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 0.96
                 opacity: 0.7
             }
 
@@ -274,7 +274,7 @@ INSERT_9 = '''                PlasmaComponents.TextField {
                     id: txtUser
                     implicitWidth: 200
                     focus: true
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
                     placeholderText: i18nd("lliurex-sddm-theme","User name")'''
 
 ANCHOR_10 = '''                PlasmaComponents.TextField {
@@ -286,7 +286,7 @@ INSERT_10 = '''                PlasmaComponents.TextField {
                     id: txtPass
                     implicitWidth: 200
                     echoMode: TextInput.Password
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
                     placeholderText: i18nd("lliurex-sddm-theme","Password")'''
 
 ANCHOR_11 = '''            PlasmaComponents.Button {
@@ -296,7 +296,7 @@ ANCHOR_11 = '''            PlasmaComponents.Button {
 INSERT_11 = '''            PlasmaComponents.Button {
                 id: btnLogin
                 text: i18nd("lliurex-sddm-theme","Login");
-                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
+                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
                 implicitWidth: 200'''
 
 
