@@ -212,6 +212,48 @@ def test_cdc_allowed_when_user_has_allowed_group_returns_none():
     assert reason is None
 
 
+def test_local_user_denied_via_camel_case_legacy_api():
+    """Real-world case found on n4d-lliurex-access-control 1.12.15:
+    AccessControlManager only exposes getUsersInfo/getGroupsInfo/getCDCInfo
+    (camelCase), not the newer get_users_info/get_groups_info/get_cdc_info
+    (snake_case). A plain object with only the legacy spelling must still
+    resolve and work, exactly like the 1.12.16 (snake_case) case above."""
+
+    class LegacyAccessControlManager:
+        def getUsersInfo(self):
+            return {"return": {"bob": {"isLocked": True}}}
+
+        def getGroupsInfo(self):
+            return {"return": {}}
+
+        def getCDCInfo(self):
+            return {"return": {"accessControlEnabled": False}}
+
+    explainer = make_explainer()
+    explainer.core.get_plugin.return_value = LegacyAccessControlManager()
+    with patch.object(explainer, "_user_groups", return_value=set()):
+        reason = explainer._check_local_deny_lists("bob", "es")
+    assert reason == ae_module.MESSAGES["local_user_denied"]["es"]
+
+
+def test_resolve_method_prefers_first_existing_name():
+    class Obj:
+        def camel(self):
+            return "camel"
+
+    explainer = make_explainer()
+    resolved = explainer._resolve_method(Obj(), "snake", "camel")
+    assert resolved() == "camel"
+
+
+def test_resolve_method_returns_none_when_neither_name_exists():
+    class Obj:
+        pass
+
+    explainer = make_explainer()
+    assert explainer._resolve_method(Obj(), "snake", "camel") is None
+
+
 def test_local_deny_lists_never_raises_when_access_control_manager_missing():
     explainer = make_explainer()
     explainer.core.get_plugin.return_value = None

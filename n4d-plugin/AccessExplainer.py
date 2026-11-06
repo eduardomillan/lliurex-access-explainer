@@ -95,6 +95,21 @@ class AccessExplainer:
 
 	#def _run
 
+	def _resolve_method(self, obj, *names):
+		'''Different n4d-lliurex-access-control versions have used
+		different method name conventions on AccessControlManager
+		(snake_case vs camelCase) while keeping the same return shape -
+		confirmed by comparing versions 1.12.15 and 1.12.16 in the
+		field. Try each candidate name in order and use whichever
+		actually exists, instead of assuming one naming convention.'''
+		for name in names:
+			method = getattr(obj, name, None)
+			if callable(method):
+				return method
+		return None
+
+	#def _resolve_method
+
 	def _user_groups(self, username):
 		proc = self._run(["id", "-Gn", username])
 		if proc is None or proc.returncode != 0 or not proc.stdout:
@@ -118,17 +133,20 @@ class AccessExplainer:
 
 		clean_user = username.lower()
 
+		get_users_info = self._resolve_method(acm, "get_users_info", "getUsersInfo")
 		try:
-			users_info = acm.get_users_info().get("return", {}) or {}
-			if users_info.get(clean_user, {}).get("isLocked"):
-				return self._msg("local_user_denied", lang)
+			if get_users_info:
+				users_info = get_users_info().get("return", {}) or {}
+				if users_info.get(clean_user, {}).get("isLocked"):
+					return self._msg("local_user_denied", lang)
 		except Exception as e:
 			print(f"AccessExplainer._check_local_deny_lists (users). Error: {e}")
 
 		user_groups = self._user_groups(username)
-		if user_groups:
+		get_groups_info = self._resolve_method(acm, "get_groups_info", "getGroupsInfo")
+		if user_groups and get_groups_info:
 			try:
-				groups_info = acm.get_groups_info().get("return", {}) or {}
+				groups_info = get_groups_info().get("return", {}) or {}
 				for group_name, group_data in groups_info.items():
 					if not isinstance(group_data, dict):
 						continue
@@ -137,12 +155,14 @@ class AccessExplainer:
 			except Exception as e:
 				print(f"AccessExplainer._check_local_deny_lists (groups). Error: {e}")
 
+		get_cdc_info = self._resolve_method(acm, "get_cdc_info", "getCDCInfo")
 		try:
-			cdc_info = acm.get_cdc_info().get("return", {}) or {}
-			if cdc_info.get("accessControlEnabled") and cdc_info.get("code"):
-				allowed = {g.strip().lower() for g in cdc_info["code"].split(",") if g.strip()}
-				if allowed and not (user_groups & allowed):
-					return self._msg("cdc_denied", lang)
+			if get_cdc_info:
+				cdc_info = get_cdc_info().get("return", {}) or {}
+				if cdc_info.get("accessControlEnabled") and cdc_info.get("code"):
+					allowed = {g.strip().lower() for g in cdc_info["code"].split(",") if g.strip()}
+					if allowed and not (user_groups & allowed):
+						return self._msg("cdc_denied", lang)
 		except Exception as e:
 			print(f"AccessExplainer._check_local_deny_lists (cdc). Error: {e}")
 
