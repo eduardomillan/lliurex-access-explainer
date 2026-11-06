@@ -1,0 +1,19 @@
+{
+	"SETUP": {
+		"type": "python",
+		"path": "AccessExplainer.py",
+		"class": "AccessExplainer"
+	},
+	"METHODS": {
+		"ping": {
+			"allowed_groups": [
+				"anonymous"
+			]
+		},
+		"explain_login_failure": {
+			"allowed_groups": [
+				"anonymous"
+			]
+		}
+	}
+}

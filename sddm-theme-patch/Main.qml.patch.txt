@@ -1,0 +1,58 @@
+--- Main.qml.pristine	2026-11-06 13:14:08.901192972 +0100
++++ Main.qml.patched	2026-11-06 13:15:01.445076164 +0100
+@@ -103,6 +103,13 @@
+         root.topWindow.enabled = true;
+     }
+ 
++    function explainerLang()
++    {
++        // AccessExplainer: pick the message language from the greeter locale
++        var n = Qt.locale().name();
++        return n.indexOf("ca") === 0 ? "ca" : "es";
++    }
++
+     function showWarning(msg)
+     {
+         message.type = Kirigami.MessageType.Warning;
+@@ -597,6 +604,26 @@
+ 
+     N4D.Proxy
+     {
++        // AccessExplainer (lliurex-access-explainer project): ask the local
++        // N4D plugin for a human-readable reason right after a login
++        // failure, reusing the same pattern WifiEduGva already uses above.
++        id: local_explain_login_failure
++        client: n4dLocal
++        plugin: "AccessExplainer"
++        method: "explain_login_failure"
++
++        onError: {
++            console.log("AccessExplainer: no response, falling back to the generic message");
++            showError(i18nd("lliurex-sddm-theme","Login failed"));
++        }
++
++        onResponse: {
++            showError(value);
++        }
++    }
++
++    N4D.Proxy
++    {
+         id: local_get_active_connections
+         client: n4dLocal
+         plugin: "WifiEduGva"
+@@ -650,8 +677,12 @@
+         }
+         
+         function onLoginFailed() {
+-            showError(i18nd("lliurex-sddm-theme","Login failed"));
+-            
++            // AccessExplainer: show a transient message while we ask the
++            // local N4D plugin for the real reason; onError/onResponse of
++            // local_explain_login_failure take over from here.
++            showWarning(i18nd("lliurex-sddm-theme","Checking the reason for the failure..."));
++            local_explain_login_failure.call([txtUser.text, explainerLang()]);
++
+             loginFrame.enabled=true;
+             txtPass.text = "";
+             txtPass.focus = true;

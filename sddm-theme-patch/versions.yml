@@ -1,0 +1,21 @@
+# Supported lliurex-sddm-theme versions for this patch.
+#
+# Main.qml.patched was generated (see apply_patch.py) from a pristine
+# Main.qml taken from the dpkg version listed below. Before patching a
+# machine, install.sh MUST check its installed lliurex-sddm-theme version
+# against this list and refuse to patch (without --force) if it does not
+# match, and MUST compare sha256 of the installed Main.qml against both
+# shas below before touching anything.
+#
+# Regenerate this file (and Main.qml.patched / Main.qml.patch.txt) with:
+#   cp /usr/share/sddm/themes/lliurex/Main.qml sddm-theme-patch/Main.qml.pristine
+#   python3 sddm-theme-patch/apply_patch.py
+#   diff -u Main.qml.pristine Main.qml.patched > Main.qml.patch.txt
+# then add the new dpkg version below.
+
+supported_versions:
+  - theme_version: "23.8.0.0"
+    verified_on: "2026-11-06"
+    verified_host: "prn5-10366948 (ThinkPad test machine)"
+    sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
+    sha256_patched: "d522f4323a40a77b9b1a6c33a4ddc35c948519e500d5e33b2350d7a9932e170c"
