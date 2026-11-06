@@ -873,6 +873,15 @@ Item {
             }
         }
         
+        Item {
+            anchors.fill: parent
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#d6e9f8"
+                radius: 4
+            }
+
         ColumnLayout {
             id: loginColumn
             spacing: 8
@@ -889,7 +898,14 @@ Item {
                 width: 320
                 Layout.alignment: Qt.AlignHCenter
             }
-            
+
+            PlasmaComponents.Label {
+                text: i18nd("lliurex-sddm-theme","Asistente de acceso activo (piloto)")
+                Layout.alignment: Qt.AlignHCenter
+                font.pointSize: 8
+                opacity: 0.7
+            }
+
             Item {
                 Layout.fillHeight:true
             }
@@ -1030,9 +1046,10 @@ Item {
                     login();
                 }
             }
-            
+
         }
-        
+        }
+
     }
 
     Timer {

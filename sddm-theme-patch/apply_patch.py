@@ -145,6 +145,101 @@ INSERT_4 = '''            Item {
             }'''
 
 
+# Anchor 5/6 together wrap loginFrame's content (the loginColumn
+# ColumnLayout) in a plain Item holding a background Rectangle behind it.
+# Window.qml (package qml-module-lliurex-ui, a different package from
+# lliurex-sddm-theme) hardcodes the window's own gray background
+# (#eff0f1) with no exposed property to override it, and isn't patched
+# by this project (deliberately - see AGENTS.md on why). So this paints
+# an inset panel just behind our own content instead: the thin gray
+# margin from Window.qml's own background stays visible around it.
+#
+# Two separate anchors instead of one spanning the whole ColumnLayout
+# block, to keep each one small and unambiguous: 5 adds the wrapper's
+# opening (Item + Rectangle) right before "ColumnLayout { id: loginColumn
+# ...", 6 adds the matching closing brace right after that ColumnLayout's
+# own closing brace. loginColumn's own "anchors.fill: parent" still
+# works unchanged - its runtime parent is now the wrapper Item instead of
+# loginFrame directly, which fills the same space via its own
+# anchors.fill: parent.
+ANCHOR_5 = '''        ColumnLayout {
+            id: loginColumn
+            spacing: 8
+            anchors.fill: parent
+'''
+INSERT_5 = '''        Item {
+            anchors.fill: parent
+
+            Rectangle {
+                anchors.fill: parent
+                color: "#d6e9f8"
+                radius: 4
+            }
+
+'''
+
+ANCHOR_6_RE = re.compile(
+    r'                onClicked: \{\n'
+    r'                    loginFrame\.enabled = false;\n'
+    r'                    login\(\);\n'
+    r'                \}\n'
+    r'            \}\n'
+    r'[ \t]*\n'
+    r'        \}\n'
+    r'[ \t]*\n'
+    r'    \}\n'
+    r'\n'
+    r'    Timer \{\n'
+    r'        id: timerAutoLogin'
+)
+INSERT_6 = '''                onClicked: {
+                    loginFrame.enabled = false;
+                    login();
+                }
+            }
+
+        }
+        }
+
+    }
+
+    Timer {
+        id: timerAutoLogin'''
+
+# Anchor 7: a small label so testers/IT staff can tell at a glance that
+# this pilot machine has the explainer active, instead of silently
+# changing login-failure behavior with no visible indicator.
+ANCHOR_7_RE = re.compile(
+    r'            Rectangle \{\n'
+    r'                color: "#7f8c8d"\n'
+    r'                height: 5\n'
+    r'                width: 320\n'
+    r'                Layout\.alignment: Qt\.AlignHCenter\n'
+    r'            \}\n'
+    r'[ \t]*\n'
+    r'            Item \{\n'
+    r'                Layout\.fillHeight:true\n'
+    r'            \}'
+)
+INSERT_7 = '''            Rectangle {
+                color: "#7f8c8d"
+                height: 5
+                width: 320
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            PlasmaComponents.Label {
+                text: i18nd("lliurex-sddm-theme","Asistente de acceso activo (piloto)")
+                Layout.alignment: Qt.AlignHCenter
+                font.pointSize: 8
+                opacity: 0.7
+            }
+
+            Item {
+                Layout.fillHeight:true
+            }'''
+
+
 def apply_literal_once(text, anchor, insert_before, label):
     count = text.count(anchor)
     if count != 1:
@@ -169,6 +264,9 @@ def main():
     text = apply_literal_once(text, ANCHOR_2, INSERT_2, "local_get_active_connections (add N4D.Proxy)")
     text = apply_regex_once(text, ANCHOR_3_RE, INSERT_3, "onLoginFailed (call AccessExplainer)")
     text = apply_regex_once(text, ANCHOR_4_RE, INSERT_4, "message box (let InlineMessage size itself)")
+    text = apply_literal_once(text, ANCHOR_5, INSERT_5, "loginColumn wrapper open (background panel)")
+    text = apply_regex_once(text, ANCHOR_6_RE, INSERT_6, "loginColumn wrapper close (background panel)")
+    text = apply_regex_once(text, ANCHOR_7_RE, INSERT_7, "pilot-active label")
 
     if text == original:
         sys.exit("ERROR: no changes were applied, refusing to write an unpatched file")

@@ -18,7 +18,15 @@ supported_versions:
     verified_on: "2026-11-06"
     verified_host: "prn5-10366948 (ThinkPad test machine)"
     sha256_pristine: "8c30d0e90fdccf6c63056fd91851e2ea90f200844d984b770c38812c31c3f824"
-    sha256_patched: "eac31ce17f04f63b775cceb747b2069238b4db62dbb50b8ac849880dfb483de1"
+    sha256_patched: "90c4fe1b9a2e28e3f3a4ec228e6020e9437d4cff9aa1450d78a802ab7823d82d"
+    # Cosmetic additions on top of the previous (working) patched version
+    # (eac31ce17f04f63b775cceb747b2069238b4db62dbb50b8ac849880dfb483de1),
+    # requested ad hoc while testing: a light-blue background panel
+    # behind the login box content (#d6e9f8, without touching
+    # qml-module-lliurex-ui's Window.qml, which owns the window's own
+    # gray background and isn't patched by this project - see
+    # AGENTS.md), and a small "pilot active" label so testers/IT staff
+    # can tell at a glance this machine has the explainer installed.
     # Superseded two previous sha256_patched values, both found live on
     # real test machines (see AGENTS.md for the full story):
     #   d522f4323a40a77b9b1a6c33a4ddc35c948519e500d5e33b2350d7a9932e170c
