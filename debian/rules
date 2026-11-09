@@ -13,11 +13,18 @@
 # truth, same behavior whether installed by hand or via this package.
 override_dh_install:
 	mkdir -p debian/lliurex-access-explainer/usr/share/lliurex-access-explainer
-	rsync -a \
+	rsync -a --chmod=D755,F644 \
 		--exclude='.git/' \
+		--exclude='.gitignore' \
 		--exclude='debian/' \
 		--exclude='__pycache__/' \
 		--exclude='.pytest_cache/' \
 		--exclude='AGENTS.md' \
 		./ debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/
+	chmod 755 \
+		debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/diagnose/diagnose_login_wifigva.sh \
+		debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/scripts/install.sh \
+		debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/scripts/uninstall.sh \
+		debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/scripts/build-release.sh \
+		debian/lliurex-access-explainer/usr/share/lliurex-access-explainer/sddm-theme-patch/apply_patch.py
 	dh_install

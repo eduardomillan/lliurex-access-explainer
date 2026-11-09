@@ -5,6 +5,7 @@ __pycache__/
 .ansible/
 *.secret.yml
 .vault_pass
+dist/
 
 # Local-only agent/collaboration notes - never committed, see AGENTS.md itself.
 AGENTS.md
