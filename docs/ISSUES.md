@@ -80,6 +80,24 @@ either adding real translation file entries to a patched
 directly in the QML instead of using `i18nd()` for this one string,
 matching how the pilot-active label already does it via `explainerLang()`.
 
+### Network IP label shows nothing if the IP isn't ready yet at boot
+
+**Status: unresolved.** `get_network_info()` reads the IP at the moment
+`Main.qml` asks for it, right as the login screen first appears. On a
+fresh boot, if the network interface hasn't finished getting an IP
+(DHCP, slow link negotiation, Wi-Fi association, etc.) by that point,
+there's nothing to show yet and the status-bar label is left blank -
+it never gets a second chance later even if the IP shows up moments
+after.
+
+**To investigate**: whether it's feasible to poll for the IP for up to
+~1 minute (short interval, e.g. every few seconds) instead of a single
+read, and only give up and omit the label entirely if nothing is found
+by then. Needs checking this fits the greeter's own lifecycle/threading
+model (QML timer calling back into the n4d plugin, vs. blocking inside
+`get_network_info()` itself) without delaying or freezing the rest of
+the login screen.
+
 ## `enhancement`
 
 ### Implement Phase 2 (explicit Kerberos error mapping)
